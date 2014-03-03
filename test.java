@@ -25,9 +25,9 @@ print_all();
 public static void print_all() throws SQLException
 {
  // Connect to the database
- String strConn = "jdbc:oracle:thin:@uml.cs.ucsb.edu:1521:xe";
- String strUsername = "edmundluong";
- String strPassword = "4174926";
+ String strConn;
+ String strUsername;
+ String strPassword ;
  conn = DriverManager.getConnection(strConn,strUsername,strPassword);
 
  // Create a Statement
