@@ -1,0 +1,132 @@
+//March 03,2014
+
+//to COMPILE using ojdbc14.jar file
+javac -op ojdbc14.jar ProgramFile.java
+
+//to RUN using ojdbc14.jar file
+java -cp "ojdbc14.jar:." ProgramFile
+
+//In Oracle, how to check what tables you own
+select table_name from user_tables;
+
+//in oracle, how to check the columns in a certain table
+//when doing this query, column name has to be in all CAPS
+SELECT COLUMN_NAME 
+FROM USER_TAB_COLUMNS 
+WHERE TABLE_NAME='CATALOG';
+
+//created the customers table, need to add the foreign key constraint
+CREATE TABLE Customers (
+cid CHAR(20),
+email CHAR(20) NOT NULL UNIQUE,
+password CHAR(20) NOT NULL,
+name CHAR(60),
+address CHAR(60) NOT NULL,
+status CHAR(20),
+oid INTEGER,
+PRIMARY KEY(cid)
+);
+
+//added orders table 
+CREATE TABLE Orders 
+(
+oid INTEGER,
+total INTEGER,
+isCart CHAR(1) NOT NULL,
+cid CHAR(20) NOT NULL,
+PRIMARY KEY(oid),
+FOREIGN KEY (cid) REFERENCES Customers ON DELETE CASCADE,
+CONSTRAINT check_isCart CHECK (isCart BETWEEN 0 and 1)
+);
+
+//made the oid from customers a foreign key
+alter table customers
+add foreign key(oid) references orders;
+
+//added catalog
+//---------TODO: need to add in the check for the format of iid to look like CHECK (iid like ‘[a-zA-z][a-zA-z][0-9][0-9][0-9][0-9][0-9]’)
+CREATE TABLE Catalog (
+iid INTEGER,
+category CHAR(20),
+warranty INTEGER,
+price INTEGER NOT NULL,
+manufacturer CHAR(20),
+model INTEGER ,
+PRIMARY KEY(iid)
+ );
+ 
+//added if (manufacturer, model) is unique
+alter table catalog
+add constraint model_manu_unique unique(manufacturer, model);
+
+ //added orderitems table
+CREATE TABLE OrderItems (
+oid INTEGER,
+iid INTEGER,
+quantity INTEGER,
+PRIMARY KEY(oid, iid),
+FOREIGN KEY (oid) REFERENCES Catalog ON DELETE CASCADE, 
+FOREIGN KEY (iid) REFERENCES Catalog ON DELETE CASCADE );
+
+//added descriptions table
+CREATE TABLE Descriptions (
+iid INTEGER,
+attribute CHAR(20),
+value CHAR(20) NOT NULL,
+PRIMARY KEY(iid, attribute),
+FOREIGN KEY (iid) REFERENCES Catalog ON DELETE CASCADE );
+
+//added the accessories table
+CREATE TABLE Accessories (
+iid1 INTEGER,
+iid2 INTEGER,
+PRIMARY KEY(iid1, iid2),
+FOREIGN KEY (iid1) REFERENCES Catalog ON DELETE CASCADE,
+FOREIGN KEY (iid2) REFERENCES Catalog ON DELETE CASCADE );
+
+//added the location table
+//TO DO-------need to add CHECK (location like ‘[a-zA-z][1-9][0-9]*’)
+CREATE TABLE Locations 
+(
+location CHAR(20),
+PRIMARY KEY(location)
+); 
+
+//added the stock table
+CREATE TABLE Stock (
+iid INTEGER,
+location CHAR(20),
+quantity INTEGER,
+min INTEGER,
+max INTEGER,
+replenishment INTEGER,
+PRIMARY KEY(iid, location),
+FOREIGN KEY (iid) REFERENCES Catalog ON DELETE CASCADE,
+FOREIGN KEY (location) REFERENCES Locations ON DELETE CASCADE );
+
+//added the shipments table, modified to add the iid, or it will say same column primary keys need to match
+CREATE TABLE Shipments (
+sid INTEGER,
+iid INTEGER,
+company CHAR(40),
+location CHAR(20) NOT NULL,
+PRIMARY KEY (sid),
+FOREIGN KEY (iid,location) REFERENCES Stock ON DELETE CASCADE );
+
+//added shipmentItems,changed 'shipping' to shipments
+CREATE TABLE ShipmentItems(
+sid INTEGER,
+iid INTEGER,
+quantity INTEGER,
+PRIMARY KEY (sid, iid),
+FOREIGN KEY (sid) REFERENCES Shipments ON DELETE CASCADE,
+FOREIGN KEY (iid) REFERENCES Catalog ON DELETE CASCADE );
+
+
+-----------------------------TO DO look up how to do the checks
+
+
+
+
+
+
