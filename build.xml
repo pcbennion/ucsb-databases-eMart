@@ -1,0 +1,60 @@
+<project name="Project174a" default="dist" basedir=".">
+    <description>
+        simple example build file
+    </description>
+  <!-- set global properties for this build -->
+  <property name="src" location="src"/>
+  <property name="build" location="build"/>
+  <property name="dist"  location="dist"/>
+  <property name ="classpath" location="lib/ojdbc14.jar"/>
+  <property name="Main-class" value="test"/>
+  
+
+  <target name="init">
+    <!-- Create the time stamp -->
+    <tstamp/>
+    <!-- Create the build directory structure used by compile -->
+    <mkdir dir="${build}"/>
+  </target>
+
+  <target name="compile" depends="init" 
+        description="compile the source " > 
+    <!-- Compile the java code from ${src} into ${build} -->
+      <javac srcdir="${src}" destdir="${build}">
+   	<classpath>
+    	  <pathelement path="./lib/ojdbc14.jar"/>
+    	</classpath>
+      </javac>	
+   </target> 
+
+  <target name="dist" depends="compile"
+        description="generate the distribution">
+    <!-- Create the distribution directory -->
+    <mkdir dir="${dist}/lib"/>
+    <!-- Put everything in ${build} into the MyProject-${DSTAMP}.jar file -->
+    <jar jarfile="${dist}/lib/Project174a-${DSTAMP}.jar" basedir="${build}"/>
+  </target>
+
+  <target name="clean"
+        description="clean up" >
+    <!-- Delete the ${build} and ${dist} directory trees -->
+    <delete dir="${build}"/>
+    <delete dir="${dist}"/>
+  </target>
+  
+  <target name="jar" depends ="compile">
+  	<jar destfile="lib/database.jar" basedir=".">
+  		<manifest>
+  		  <attribute name="Main-Class" value="test"/>
+  		  <attribute name="Class-Path" value="./lib/database.jar"/>
+  		</manifest>
+  	</jar>	
+  </target> 
+  
+  <target name="run" depends="compile">
+    <java fork="true" classname="test" classpath="build:./lib/ojdbc14.jar"/>     
+  </target>
+  
+  
+  
+</project>
