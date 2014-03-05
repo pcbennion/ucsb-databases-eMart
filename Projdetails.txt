@@ -123,7 +123,10 @@ FOREIGN KEY (sid) REFERENCES Shipments ON DELETE CASCADE,
 FOREIGN KEY (iid) REFERENCES Catalog ON DELETE CASCADE );
 
 
------------------------------TO DO look up how to do the checks
+03/05/2014
+
+-deleted the oid from customers table, did not fit in what we needed
+-need to add a isManager boolean
 
 
 
