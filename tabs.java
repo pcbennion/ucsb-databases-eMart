@@ -7,36 +7,31 @@ import java.awt.*;
 public class tabs extends JPanel{
 
     protected JButton addToCart;
-    public tabs()
-    {
-        super(new GridLayout(1,1));
-
-	JTabbedPane tabbedPane = new JTabbedPane();
-
-	JComponent catalog = makeCatalogTable();
-	tabbedPane.addTab("Catalog",catalog); 
-	tabbedPane.setMnemonicAt(0, KeyEvent.VK_1);
+    public tabs() {
+    	
+	    super(new FlowLayout());
+		JTabbedPane tabbedPane = new JTabbedPane();
 	
-	JComponent orders = makeTextPanel("Orders");
-	tabbedPane.addTab("Orders",orders); 
-	tabbedPane.setMnemonicAt(1, KeyEvent.VK_2);
+		JComponent catalog = makeCatalogTable();
+		tabbedPane.addTab("Catalog",catalog); 
+		tabbedPane.setMnemonicAt(0, KeyEvent.VK_1);
+		
+		JComponent cart = makeTextPanel("Cart");
+		tabbedPane.addTab("Cart",cart); 
+		tabbedPane.setMnemonicAt(1, KeyEvent.VK_4);
+		
+		JComponent orders = makeTextPanel("Orders");
+		tabbedPane.addTab("Orders",orders); 
+		tabbedPane.setMnemonicAt(2, KeyEvent.VK_2);
+		
+		JComponent customerinfo = makeTextPanel("Customer Information");
+		tabbedPane.addTab("Customer Information",customerinfo); 
+		tabbedPane.setMnemonicAt(3, KeyEvent.VK_3);
 	
-	
-	JComponent customerinfo = makeTextPanel("Customer Information");
-	tabbedPane.addTab("Customer Information",customerinfo); 
-	tabbedPane.setMnemonicAt(2, KeyEvent.VK_3);
-	
-	JComponent cart = makeTextPanel("Cart");
-	tabbedPane.addTab("Cart",cart); 
-	tabbedPane.setMnemonicAt(3, KeyEvent.VK_4);
-
-
-	//Add the tabbed pane to this panel.
-	add(tabbedPane);
-        
+		//Add the tabbed pane to this panel.
+		add(tabbedPane);
         //The following line enables to use scrolling tabs.
         tabbedPane.setTabLayoutPolicy(JTabbedPane.SCROLL_TAB_LAYOUT);
-
     }
 
    protected JComponent makeTextPanel(String text) {
@@ -49,10 +44,9 @@ public class tabs extends JPanel{
         //panel.setBounds(700,250,200,200);
         return panel;
     }
+   
     protected JComponent makeCatalogTable() {
     
-   	
-        
         JPanel panel = new JPanel(new FlowLayout());
         //JLabel filler = new JLabel(text);
         //filler.setHorizontalAlignment(JLabel.CENTER);
@@ -61,8 +55,8 @@ public class tabs extends JPanel{
         panel.setPreferredSize(new Dimension(700,700));
         JComponent addtoCart = makeButton("Add to Cart");
        
-        //addtoCart.setAlignmentX(Component.LEFT_ALIGNMENT);
-        //addtoCart.setAlignmentY(Component.BOTTOM_ALIGNMENT);
+        addtoCart.setAlignmentX(Component.LEFT_ALIGNMENT);
+        addtoCart.setAlignmentY(Component.BOTTOM_ALIGNMENT);
         
         
         //panel.setLayout(new BoxLayout(panel,BoxLayout.Y_AXIS));
@@ -72,7 +66,7 @@ public class tabs extends JPanel{
                                 "Sport",
                                 "# of Years",
                                 "Vegetarian"};
-         Object[][] data = {
+         Object[][] data = { columnNames, 
 	    {"Kathy", "Smith",
 	     "Snowboarding", new Integer(5), new Boolean(false)},
 	    {"John", "Doe",
@@ -87,7 +81,6 @@ public class tabs extends JPanel{
         JTable table = new JTable(data,columnNames);
         //creates the scrollable plane
         JScrollPane spTable = new JScrollPane(table);
-        //dimension(width,height)
         table.setPreferredScrollableViewportSize(new Dimension(400, 300));
         
         

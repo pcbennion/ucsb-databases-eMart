@@ -72,7 +72,7 @@ public class eMart implements Runnable{
 		public ResultSet execute() throws SQLException {
 			// Assemble command string
 			String cmd =  	"SELECT * ";
-			cmd +=			"FROM Catalog c";
+			cmd +=			"FROM Customers c";
 			System.out.println("\tCatalog Query - Hello World! Command = " + cmd);
 			// Execute and return result
 			return Database.stmt.executeQuery(cmd);

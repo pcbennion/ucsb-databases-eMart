@@ -1,5 +1,6 @@
 package edu.ucsb.cs174a.w14.edluong.eStore_eMart;
 
+import java.awt.EventQueue;
 import java.sql.*;
 import java.util.*;
 
@@ -39,8 +40,8 @@ public class Database {
 		// Run threads
 		Thread t1 = new Thread(mart);
 		t1.start(); 
-		Thread t2 = new Thread(ui);
-		t2.start();
+		
+		EventQueue.invokeLater(ui);
 	}
 	
 	/**

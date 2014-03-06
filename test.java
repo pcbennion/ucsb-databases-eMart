@@ -7,14 +7,9 @@ static Connection conn;
 public static void main(String[] args) throws SQLException{
 
 // 1. Load the Oracle JDBC driver for this program
-try 
-{
- DriverManager.registerDriver(new oracle.jdbc.OracleDriver());
-}
-catch ( Exception e)
-{ 
-e.printStackTrace(); 
-}
+try {
+	DriverManager.registerDriver(new oracle.jdbc.OracleDriver());
+}catch ( Exception e){e.printStackTrace(); }
 ///////////////////////////////////////////////////
 
  // 2. Test functions for each query
@@ -25,9 +20,9 @@ print_all();
 public static void print_all() throws SQLException
 {
  // Connect to the database
- String strConn;
- String strUsername;
- String strPassword ;
+ String strConn = "jdbc:oracle:thin:@uml.cs.ucsb.edu:1521:xe";
+ String strUsername = "pbennion";
+ String strPassword = "4173217";
  conn = DriverManager.getConnection(strConn,strUsername,strPassword);
 
  // Create a Statement
