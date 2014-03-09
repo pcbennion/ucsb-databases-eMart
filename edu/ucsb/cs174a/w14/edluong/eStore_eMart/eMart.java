@@ -42,7 +42,6 @@ public class eMart implements Runnable{
 	            		System.out.println("eMart Controller - Input Event!");
 	            		ui.inputResult(input.execute());
 	            		input = null;
-	            		break;
 	            	}
 	            }catch(InterruptedException ex) {break;}
 			}
@@ -72,7 +71,7 @@ public class eMart implements Runnable{
 		public ResultSet execute() throws SQLException {
 			// Assemble command string
 			String cmd =  	"SELECT * ";
-			cmd +=			"FROM Customers c";
+			cmd +=			"FROM Catalog c";
 			System.out.println("\tCatalog Query - Hello World! Command = " + cmd);
 			// Execute and return result
 			return Database.stmt.executeQuery(cmd);

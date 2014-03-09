@@ -4,10 +4,12 @@ import java.awt.*;
 import java.awt.event.*;
 
 import javax.swing.*;
+import javax.swing.table.*;
 
 import net.miginfocom.swing.*;
 
 import java.sql.*;
+import java.util.*;
 
 public class CustUI extends JFrame implements Runnable{
 	
@@ -20,6 +22,7 @@ public class CustUI extends JFrame implements Runnable{
 	private JFrame frame;
 	private JTextField txtQty;
 	private JTable tableCata;
+	CatalogTable tableCataData;
 
 	/**
 	 * Launch the application.
@@ -81,6 +84,11 @@ public class CustUI extends JFrame implements Runnable{
 		catalog_controls.add(btnRemoveFromCart);
 		
 		JButton btnRefresh = new JButton("Refresh");
+		btnRefresh.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				
+			}
+		});
 		catalog_controls.add(btnRefresh);
 		
 		JPanel catalog_search = new JPanel();
@@ -110,11 +118,7 @@ public class CustUI extends JFrame implements Runnable{
 		JPanel catalog_table = new JPanel();
 		catalog_tab.add(catalog_table, BorderLayout.CENTER);
 		
-		String[] columnNames = {"IID",
-                "ITEM NAME",
-                "MANUFACTURER",
-                "MODEL #",
-                "WARRANTY"};
+		String[] columnNames = {"IID", "CATEGORY", "WARRANTY", "PRICE", "MANUFACTURER", "MODEL #"};
 		Object[][] data = {
 			{"Kathy", "Smith",
 					"Snowboarding", new Integer(5), new Boolean(false)},
@@ -127,8 +131,9 @@ public class CustUI extends JFrame implements Runnable{
 			{"Joe", "Brown",
 					"Pool", new Integer(10), new Boolean(false)}
 		};
+		tableCataData = new CatalogTable(columnNames, 36);
 		catalog_table.setLayout(new BorderLayout(0, 0));
-		tableCata = new JTable(data,columnNames);
+		tableCata = new JTable(tableCataData);
 		//tableCata.setPreferredScrollableViewportSize(new Dimension(370, 400));
 		//tableCata.setPreferredSize(new Dimension(370, 400));
 		tableCata.setRowSelectionAllowed(true);
@@ -159,7 +164,7 @@ public class CustUI extends JFrame implements Runnable{
 		}
 		
 		System.out.println("Customer Interface - Sending Input to Mart.");
-		mart.inputCommand(new eMart.QueryCatalog());
+		mart.inputCommand(new eMart.QueryCatalogAttr("iid", '>', "150"));
 		try {
 			System.out.println("Customer Interface - Listening for Input.");
 			while (!Thread.currentThread().isInterrupted()) {
@@ -167,6 +172,8 @@ public class CustUI extends JFrame implements Runnable{
 	            	Thread.sleep(50);
 	            	if(input != null) {
 	            		System.out.println("Customer Interface - Input Event!");
+	            		tableCataData.setContents(input);
+	            		/*
 	            		if(input.next()) {
 		            		ResultSetMetaData rsmd = input.getMetaData();
 		            		assert(rsmd.getTableName(1)=="Catalog");
@@ -181,8 +188,8 @@ public class CustUI extends JFrame implements Runnable{
 		            		} while(input.next());
 		            		System.out.print("\n");
 		            		rsmd=null;
-	            		}
-	            		input = null;
+		            	}*/
+	            		//input = null;
 	            		break;
 	            	}
 	            }catch(InterruptedException ex) {break;}
@@ -191,5 +198,30 @@ public class CustUI extends JFrame implements Runnable{
 			Database.stmt.close();
 		} catch (SQLException e) {e.printStackTrace();}	
 	}
+	
+	// ====================================================================================================
+	// Implementations of tables.
+	// ====================================================================================================
+	/**
+	 * Table for displaying items
+	 */
+	@SuppressWarnings("serial")
+	class CatalogTable extends DefaultTableModel {
+		public CatalogTable(Object[] obj, int i){super(obj, i);}
+		public void setContents(ResultSet rs) throws SQLException{
+			this.getDataVector().clear();
+			if(rs.next()) {
+        		int col;
+        		do{
+        			Object[] obj = new Object[6];
+        			for(col=0; col<6; col++) 
+        				obj[col] =rs.getString(col+1);
+        			this.addRow(obj);
+        			
+        		} while(rs.next());
+    		}
+		}
+	}
+	// ====================================================================================================
 
 }
