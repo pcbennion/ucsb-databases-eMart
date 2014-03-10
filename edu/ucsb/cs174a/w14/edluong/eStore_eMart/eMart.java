@@ -1,30 +1,32 @@
 package edu.ucsb.cs174a.w14.edluong.eStore_eMart;
 
 import java.sql.*;
+import java.util.*;
 
 public class eMart implements Runnable{
 	
-	// Member variables
-	private volatile MartCmd input;
-
-	public CustUI ui;
+	private static eMart ref = null;
+	
+	// Members that can be operated on by other threads
+	private volatile Queue<MartCmd> cmdQueue;
 
 	/**
-	 * Constructor
+	 * Singleton class reference accessor/constructor
 	 */
-	public eMart() {
-		
+	public static eMart Ref() {
+		if(ref==null) ref = new eMart();
+		return ref;
+	}
+	private eMart() {
+		cmdQueue = new LinkedList<MartCmd>();
 	}
 	
 	/**
 	 * Sends the appropriate callback request to this thread. Will fail if there is already a command waiting to be executed.
 	 * @param c: the command to be executed.
-	 * @return success or failure.
 	 */
-	public boolean inputCommand(MartCmd c) {
-		if(input!=null) return false;
-		input = c;
-		return true;
+	public void inputCommand(MartCmd c) {
+		cmdQueue.add(c);
 	}
 
 	/**
@@ -38,10 +40,9 @@ public class eMart implements Runnable{
 			while (!Thread.currentThread().isInterrupted()) {
 	            try {
 	            	Thread.sleep(50);
-	            	if(input != null) {
+	            	while(!cmdQueue.isEmpty()) {
 	            		System.out.println("eMart Controller - Input Event!");
-	            		ui.inputResult(input.execute());
-	            		input = null;
+	            		cmdQueue.remove().execute();
 	            	}
 	            }catch(InterruptedException ex) {break;}
 			}
@@ -56,8 +57,8 @@ public class eMart implements Runnable{
 	//
 	// Here is the base interface:
 	// ====================================================================================================
-	public interface MartCmd {
-		public ResultSet execute() throws SQLException;
+	private interface MartCmd {
+		public void execute() throws SQLException;
 	}
 	// ====================================================================================================
 	// Valid eMart command implementations follow :
@@ -66,15 +67,20 @@ public class eMart implements Runnable{
 	 * Get full catalog. Constructor takes no arguments.
 	 */
 	public static class QueryCatalog implements MartCmd {
-		public QueryCatalog() {}
+		private int dest;
+		public QueryCatalog(int d) {dest = d;}
 		@Override
-		public ResultSet execute() throws SQLException {
+		public void execute() throws SQLException {
 			// Assemble command string
 			String cmd =  	"SELECT * ";
 			cmd +=			"FROM Catalog c";
 			System.out.println("\tCatalog Query - Hello World! Command = " + cmd);
-			// Execute and return result
-			return Database.stmt.executeQuery(cmd);
+			// Execute and push result
+			switch(dest){
+				case Database.DEST_CSTMR:
+					CustGUI.Ref().SetCatalogData(Database.stmt.executeQuery(cmd));
+				default:
+			}
 		}
 	}
 	/**
@@ -90,14 +96,14 @@ public class eMart implements Runnable{
 			this.attrname=attrname; this.op = op; this.value=value;
 		}
 		@Override
-		public ResultSet execute() throws SQLException {
+		public void execute() throws SQLException {
 			// Assemble command string
 			String cmd =  	"SELECT * ";
 			cmd +=			"FROM Catalog c ";
 			cmd +=			"WHERE c." + attrname + " " + op + " " +  value;
 			System.out.println("\tCatalog Query - Hello World! Command = " + cmd);
 			// Execute and return result
-			return Database.stmt.executeQuery(cmd);
+			//return Database.stmt.executeQuery(cmd);
 		}
 	}
 	/**
@@ -107,14 +113,14 @@ public class eMart implements Runnable{
 		private String attrname, value;
 		public QueryCatalogDesc(String attrname, String value) {this.attrname=attrname; this.value=value;}
 		@Override
-		public ResultSet execute() throws SQLException {
+		public void execute() throws SQLException {
 			// Assemble command string
 			String cmd =  	"SELECT * ";
 			cmd +=			"FROM Catalog c ";
 			cmd +=			"WHERE c.iid = (SELECT d.iid FROM Descriptions WHERE d.attribute = " + attrname + " AND d.value = " + value + ")";
 			System.out.println("\tCatalog Query - Hello World! Command = " + cmd);
 			// Execute and return result
-			return Database.stmt.executeQuery(cmd);
+			//return Database.stmt.executeQuery(cmd);
 		}
 	}
 	/**
@@ -124,14 +130,14 @@ public class eMart implements Runnable{
 		private String iid;
 		public QueryCatalogAcc(String iid) {this.iid=iid;}
 		@Override
-		public ResultSet execute() throws SQLException {
+		public void execute() throws SQLException {
 			// Assemble command string
 			String cmd =  	"SELECT * ";
 			cmd +=			"FROM Catalog c ";
 			cmd +=			"WHERE c.iid = (SELECT a.iid2 FROM Accessories WHERE a.iid1 = " + iid + ")";
 			System.out.println("\tCatalog Query - Hello World! Command = " + cmd);
 			// Execute and return result
-			return Database.stmt.executeQuery(cmd);
+			//return Database.stmt.executeQuery(cmd);
 		}
 	}
 	/**
@@ -141,14 +147,14 @@ public class eMart implements Runnable{
 		private String cid;
 		public QueryCartItems(String cid) {this.cid=cid;}
 		@Override
-		public ResultSet execute() throws SQLException {
+		public void execute() throws SQLException {
 			// Assemble command string
 			String cmd =  	"SELECT * ";
 			cmd +=			"FROM Customers c ";
 			cmd +=			"WHERE c.cid = " + cid;
 			System.out.println("\tCatalog Query - Hello World! Command = " + cmd);
 			// Execute and return result
-			return Database.stmt.executeQuery(cmd);
+			//return Database.stmt.executeQuery(cmd);
 		}
 	}
 	/**
@@ -158,14 +164,14 @@ public class eMart implements Runnable{
 		private String cid, oid;
 		public QueryCustOrders(String cid, String oid) {this.cid=cid; this.oid=oid;}
 		@Override
-		public ResultSet execute() throws SQLException {
+		public void execute() throws SQLException {
 			// Assemble command string
 			String cmd =  	"SELECT * ";
 			cmd +=			"FROM Orders o ";
 			cmd +=			"WHERE o.cid = " + cid + " AND o.oid = " + oid;
 			System.out.println("\tCatalog Query - Hello World! Command = " + cmd);
 			// Execute and return result
-			return Database.stmt.executeQuery(cmd);
+			//return Database.stmt.executeQuery(cmd);
 		}
 	}
 	/**
@@ -176,9 +182,8 @@ public class eMart implements Runnable{
 		private int quantity;
 		public UpdItemCart(String iid, int quantity) {this.iid=iid; this.quantity=quantity;}
 		@Override
-		public ResultSet execute() {
+		public void execute() {
 			// TODO Stub
-			return null;
 		}
 	}
 	/**
@@ -188,9 +193,8 @@ public class eMart implements Runnable{
 		private String cid;
 		public AddOrder(String cid) {this.cid=cid;}
 		@Override
-		public ResultSet execute() {
+		public void execute() {
 			// TODO Stub
-			return null;
 		}
 	}
 	/**
@@ -200,9 +204,8 @@ public class eMart implements Runnable{
 		private String cid, oid;
 		public AddOrderCopy(String cid, String oid) {this.cid=cid; this.oid=oid;}
 		@Override
-		public ResultSet execute() {
+		public void execute() {
 			// TODO Stub
-			return null;
 		}
 	}
 	// ====================================================================================================

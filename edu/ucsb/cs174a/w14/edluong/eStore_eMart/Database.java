@@ -6,6 +6,12 @@ import java.util.*;
 
 public class Database {
 	
+	public static final int DEST_CSTMR = 1,
+							DEST_MANAG = 2,
+							DEST_WAREH = 3,
+							DEST_ESTOR = 4,
+							DEST_EMART = 5;
+	
 	public static Connection conn;
 	public static Statement stmt;
 	private static String username, password;
@@ -27,20 +33,21 @@ public class Database {
 		password = args[1];
 		
 		// Initialize interfaces and controllers
-		CustUI ui = new CustUI();
-		eMart mart = new eMart();
-		ui.mart = mart;
-		mart.ui = ui;
+		CustGUI ui = CustGUI.Ref();
+		eMart mart = eMart.Ref();
+		//ui.mart = mart;
+		//mart.ui = ui;
 		
 		// Initialize the connection
 		try {
-		openConnection();
+			openConnection();
 		} catch (SQLException e) {e.printStackTrace();}
 		
 		// Run threads
 		Thread t1 = new Thread(mart);
 		t1.start(); 
 		
+		// Invoke JFrames
 		EventQueue.invokeLater(ui);
 	}
 	
