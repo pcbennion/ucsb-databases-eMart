@@ -39,6 +39,10 @@ FOREIGN KEY (cid) REFERENCES Customers ON DELETE CASCADE,
 CONSTRAINT check_isCart CHECK (isCart BETWEEN 0 and 1)
 );
 
+insert into orders(oid, total, isCart, cid)
+values(001, 0, 1, 'Pquirrell');
+INSERT INTO OrderItems VALUES (1, 101, 1)
+
 //made the oid from customers a foreign key
 alter table customers
 add foreign key(oid) references orders;
