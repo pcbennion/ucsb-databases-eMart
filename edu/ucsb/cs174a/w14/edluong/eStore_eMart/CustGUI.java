@@ -4,7 +4,11 @@ import java.awt.*;
 import java.awt.event.*;
 
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 import javax.swing.table.*;
+
+import com.jgoodies.forms.factories.*;
+import com.jgoodies.forms.layout.*;
 
 import net.miginfocom.swing.*;
 
@@ -18,12 +22,16 @@ public class CustGUI extends JFrame implements Runnable {
 	private static CustGUI ref = null;
 	
 	private eMart controller;
+	private String CID = null;
+	
 	private JFrame frame;
-	private JTextField txtQty;
+	private JDialog login;
 	private JTable tableCata;
 	
 	// Members that can be operated on by other threads
 	private volatile CatalogTable tableCataData;
+
+	private JTextField txtQty;
 	
 	/**
 	 * Singleton class reference accessor/constructor
@@ -41,6 +49,21 @@ public class CustGUI extends JFrame implements Runnable {
 	 */
 	public void SetCatalogData(ResultSet rs) throws SQLException {
 		tableCataData.setContents(rs);
+	}
+	/**
+	 * Receive and interpret login return
+	 */
+	public void SetLoginResult(ResultSet rs) throws SQLException {
+		// If the login returns a valid result, close login pane.
+		if(rs.next()) {
+    		CID = rs.getString(1);
+    		System.out.println("CustGUI Login - CID recieved: "+CID);
+    		login.setVisible(false);
+    		// Initialize info on all panels
+    		controller.inputCommand(new eMart.QueryCatalog(Database.DEST_CSTMR));
+		} else { // Otherwise, re-enable login to try again.
+			login.setEnabled(true);
+		}
 	}
 
 	/**
@@ -172,6 +195,63 @@ public class CustGUI extends JFrame implements Runnable {
 			}
 		});
 		catalog_search.add(btnClearTerms, "cell 0 3");
+		
+		// ====================================================================================================
+		// Login Dialogue Box.
+		// ====================================================================================================
+		JPanel loginPane = new JPanel();
+		loginPane.setBorder(new EmptyBorder(5, 5, 5, 5));
+		loginPane.setLayout(new BorderLayout(0, 0));
+		// Username and Password fields
+		JPanel loginPanelMain = new JPanel();
+		loginPane.add(loginPanelMain, BorderLayout.CENTER);
+		loginPanelMain.setLayout(new FormLayout(new ColumnSpec[] {
+				FormFactory.RELATED_GAP_COLSPEC,
+				ColumnSpec.decode("max(44dlu;default)"),
+				FormFactory.RELATED_GAP_COLSPEC,
+				ColumnSpec.decode("max(124dlu;default):grow"),
+				FormFactory.RELATED_GAP_COLSPEC,
+				FormFactory.DEFAULT_COLSPEC,},
+			new RowSpec[] {
+				FormFactory.RELATED_GAP_ROWSPEC,
+				FormFactory.DEFAULT_ROWSPEC,
+				FormFactory.RELATED_GAP_ROWSPEC,
+				FormFactory.DEFAULT_ROWSPEC,
+				FormFactory.RELATED_GAP_ROWSPEC,
+				FormFactory.DEFAULT_ROWSPEC,}));
+		JLabel loginUserLbl = new JLabel("Username:");
+		loginPanelMain.add(loginUserLbl, "2, 2, right, default");
+		final JTextField loginUserTxt = new JTextField();
+		loginPanelMain.add(loginUserTxt, "4, 2, fill, default");
+		loginUserTxt.setColumns(10);
+		JLabel loginPassLbl = new JLabel("Password:");
+		loginPanelMain.add(loginPassLbl, "2, 6, right, default");
+		final JTextField loginPassTxt = new JTextField();
+		loginPanelMain.add(loginPassTxt, "4, 6, fill, default");
+		// Login button
+		JPanel loginPanelBtn = new JPanel();
+		loginPane.add(loginPanelBtn, BorderLayout.SOUTH);
+		JButton loginBtn = new JButton("Login");
+		loginBtn.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {			//<-- LOGIN BUTTON
+				// Grab username and password
+				String user = loginUserTxt.getText();
+				String pass = loginPassTxt.getText();
+				loginUserTxt.setText("");
+				loginPassTxt.setText("");
+				System.out.println("CustGUI Login - Login clicked: user = "+user+", pass = "+pass);
+				login.setEnabled(false);
+				// Pass to controller
+				controller.inputCommand(new eMart.QueryLogin(Database.DEST_CSTMR, user, pass));
+			}
+		});
+		loginPanelBtn.add(loginBtn);
+		login = new JDialog(frame, "Login:", true);
+		login.setContentPane(loginPane);
+		login.setResizable(false);
+		login.setBounds(300, 300, 450, 150);
+		login.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+		login.pack();
 		// ====================================================================================================
 	}
 
@@ -179,9 +259,9 @@ public class CustGUI extends JFrame implements Runnable {
 	public void run() {
 		controller = eMart.Ref();
 		
-		// Set frame to be visible and fetch initial data
-		controller.inputCommand(new eMart.QueryCatalog(Database.DEST_CSTMR));
+		// Set frame to be visible and open login dialog
 		this.frame.setVisible(true);	
+		login.setVisible(true);
 	}
 }
 	

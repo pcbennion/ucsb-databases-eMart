@@ -208,6 +208,27 @@ public class eMart implements Runnable{
 			// TODO Stub
 		}
 	}
+	/**
+	 * Searches for username and password for login.
+	 */
+	public static class QueryLogin implements MartCmd {
+		private String user, pass;
+		private int dest;
+		public QueryLogin(int d, String user, String pass) {this.dest = d; this.user=user; this.pass=pass;}
+		@Override
+		public void execute() throws SQLException {
+			// Assemble command string
+			String cmd =  	"SELECT cid ";
+			cmd +=			"FROM Customers c ";
+			cmd +=			"WHERE c.cid = '" + user + "' AND c.password = '" + pass +"'" ;
+			System.out.println("\tLogin Query - Command = " + cmd);
+			// Pass to appropriate function
+			switch(dest) {
+				case Database.DEST_CSTMR:
+					CustGUI.Ref().SetLoginResult(Database.stmt.executeQuery(cmd));
+			}
+		}
+	}
 	// ====================================================================================================
 	// End command implementations.
 	// ====================================================================================================
