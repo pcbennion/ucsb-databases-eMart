@@ -190,17 +190,21 @@ public class eMart implements Runnable{
 		public void execute() throws SQLException {
 			// Assemble command strings. First, get item entry, if any, from order items
 			String cmd1;
-			ResultSet rs;
 			cmd1  =  		"SELECT quantity  ";
 			cmd1 +=			"FROM OrderItems ";
 			cmd1 +=			"WHERE iid = " + iid + " AND oid = (SELECT oid FROM Customers WHERE cid = '" + cid + "')";
-			rs = Database.stmt.executeQuery(cmd1);
+			ResultSet rs = Database.stmt.executeQuery(cmd1);
 			if(rs.next()) {
-				int current = rs.getInt(1);
-				cmd1 = 		"UPDATE OrderItems ";
-				cmd1+= 		"SET quantity = " + current + quantity + " ";
-				cmd1+= 		"WHERE iid = " + iid + " AND oid = (SELECT oid FROM Customers WHERE cid = '" + cid + "')";
+				System.out.println("\tCart Item Update - Modifying existing entry");
+				int i = rs.getInt(1) + quantity;
+				if(i<0){cmd1 = "DELETE FROM OrderItems WHERE iid = " + iid + " AND oid = (SELECT oid FROM Customers WHERE cid = '" + cid + "')";}
+				else {
+					cmd1 = 		"UPDATE OrderItems ";
+					cmd1+= 		"SET quantity = " + i + " ";
+					cmd1+= 		"WHERE iid = " + iid + " AND oid = (SELECT oid FROM Customers WHERE cid = '" + cid + "')";
+				}
 			} else {
+				System.out.println("\tCart Item Update - No entry found, inserting");
 				cmd1 = 		"INSERT INTO OrderItems ";
 				cmd1+= 		"VALUES ((SELECT oid FROM Customers WHERE cid = '" + cid + "'), " + iid + ", " + quantity + ")";
 			}
@@ -210,7 +214,7 @@ public class eMart implements Runnable{
 			System.out.println("\tCart Item Update - Command = " + cmd1);
 			switch(dest){
 				case Database.DEST_CSTMR:
-					Database.stmt.executeQuery(cmd1);
+					rs = Database.stmt.executeQuery(cmd1);
 					CustGUI.Ref().SetCartData(Database.stmt.executeQuery(cmd2));
 				default:
 			}
@@ -228,6 +232,30 @@ public class eMart implements Runnable{
 			// Assemble command strings - one for deleting and one for updating the cart
 			String cmd1 =  	"DELETE FROM OrderItems  ";
 			cmd1 +=			"WHERE iid = " + iid + " AND oid = (SELECT oid FROM Customers WHERE cid = '" + cid + "')";
+			String cmd2 =  	"SELECT c.iid, c.category, c.warranty, c.manufacturer, c.model, c.price, o.quantity ";
+			cmd2 +=			"FROM OrderItems o, Catalog c ";
+			cmd2 +=			"WHERE o.iid = c.iid AND o.oid = (SELECT oid FROM Customers WHERE cid = '" + cid + "')";
+			System.out.println("\tCart Item Removal - Command = " + cmd1);
+			switch(dest){
+				case Database.DEST_CSTMR:
+					Database.stmt.executeQuery(cmd1);
+					CustGUI.Ref().SetCartData(Database.stmt.executeQuery(cmd2));
+				default:
+			}
+		}
+	}
+	/**
+	 * Removes all items in cid's cart. Constructor takes destination and customer id.
+	 */
+	public static class RmAllItemCart implements MartCmd {
+		private String cid;
+		private int dest;
+		public RmAllItemCart(int d, String cid) {this.dest=d; this.cid=cid;}
+		@Override
+		public void execute() throws SQLException {
+			// Assemble command strings - one for deleting and one for updating the cart
+			String cmd1 =  	"DELETE FROM OrderItems  ";
+			cmd1 +=			"WHERE oid = (SELECT oid FROM Customers WHERE cid = '" + cid + "')";
 			String cmd2 =  	"SELECT c.iid, c.category, c.warranty, c.manufacturer, c.model, c.price, o.quantity ";
 			cmd2 +=			"FROM OrderItems o, Catalog c ";
 			cmd2 +=			"WHERE o.iid = c.iid AND o.oid = (SELECT oid FROM Customers WHERE cid = '" + cid + "')";

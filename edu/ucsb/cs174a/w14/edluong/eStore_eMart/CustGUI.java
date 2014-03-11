@@ -28,10 +28,13 @@ public class CustGUI extends JFrame implements Runnable {
 	private JDialog login;
 	private JTable tableCata;
 	private JTable tableCart;
+	private JTable tableOrder;
 	
 	// Members that can be operated on by other threads
 	private volatile CatalogTable tableCataData;
-	private volatile CatalogTable tableCartData;
+	private volatile CartTable tableCartData;
+	private volatile CartTable tableOrderData;
+
 	
 	/**
 	 * Singleton class reference accessor/constructor
@@ -49,12 +52,14 @@ public class CustGUI extends JFrame implements Runnable {
 	 */
 	public void SetCatalogData(ResultSet rs) throws SQLException {
 		tableCataData.setContents(rs);
+		tableCata.repaint();
 	}
 	/**
 	 * Push a result set to the cart table
 	 */
 	public void SetCartData(ResultSet rs) throws SQLException {
 		tableCartData.setContents(rs);
+		tableCart.repaint();
 	}
 	/**
 	 * Push and interpret login return
@@ -173,7 +178,7 @@ public class CustGUI extends JFrame implements Runnable {
 		JButton btnRefresh = new JButton("Refresh");				//<--REFRESH PAGE CONTENTS
 		btnRefresh.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
-				System.out.println("Customer GUI - Refresh Catalog clicked");
+				System.out.println("Customer GUI - Refresh Cart clicked");
 				controller.inputCommand(new eMart.QueryCatalog(Database.DEST_CSTMR));
 			}
 		});
@@ -216,7 +221,7 @@ public class CustGUI extends JFrame implements Runnable {
 		// Table for displaying items
 		JPanel cart_table = new JPanel();
 		String[] columnNamesCart = {"IID", "CATEGORY", "WARRANTY", "MANUFACTURER", "MODEL #", "PRICE", "QUANTITY"};
-		tableCartData = new CatalogTable(columnNamesCart, 36);
+		tableCartData = new CartTable(columnNamesCart, 36);
 		cart_table.setLayout(new BorderLayout(0, 0));
 		tableCart = new JTable(tableCartData);
 		tableCart.setRowSelectionAllowed(true);
@@ -264,9 +269,10 @@ public class CustGUI extends JFrame implements Runnable {
 					return;
 				}
 				String iid = (String)tableCartData.getValueAt(selected, 0);
+				String current = (String)tableCartData.getValueAt(selected, 6);
 				System.out.println("Customer GUI - Update Cart clicked: iid = " + iid + ", qty = " + qty);
 				// Push command to change cart contents
-				controller.inputCommand(new eMart.UpdItemCart(Database.DEST_CSTMR, CID, iid, qty));
+				controller.inputCommand(new eMart.UpdItemCart(Database.DEST_CSTMR, CID, iid, qty-Integer.parseInt(current)));
 			}
 		});
 		cart_controls.add(btnUpdCart);
@@ -309,20 +315,102 @@ public class CustGUI extends JFrame implements Runnable {
 		cartTotal.setLayout(new BorderLayout(0, 0));
 		JList<String> cartTotalList = new JList<String>();
 		cartTotal.add(cartTotalList);
-		JButton btnCkout = new JButton("Checkout ");					//<--ADD NEW SEARCH TERM
+		JButton btnCkout = new JButton("Checkout ");					//<--CHECKOUT
 		btnCkout.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				System.out.println("Customer GUI - Checkout clicked");
 			}
 		});
 		cart_ckout.add(btnCkout, "cell 0 2");
-		JButton btnClearCart = new JButton("Clear Cart");				//<--CLEAR ALL SEARCH TERMS
+		JButton btnClearCart = new JButton("Clear Cart");				//<--CLEAR CART
 		btnClearCart.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				System.out.println("Customer GUI - Clear cart clicked");
+				controller.inputCommand(new eMart.RmAllItemCart(Database.DEST_CSTMR, CID));
 			}
 		});
 		cart_ckout.add(btnClearCart, "cell 0 3");
+		
+		// ====================================================================================================
+		// Orders Tab
+		// ====================================================================================================
+		// Core tab panel
+		JPanel order_tab = new JPanel();
+		tabbedPane.addTab("Orders", null, order_tab, null);
+		order_tab.setLayout(new BorderLayout(0, 0));
+		
+		// Table for displaying items
+		JPanel order_table = new JPanel();
+		String[] columnNamesOrd = {"IID", "CATEGORY", "WARRANTY", "MANUFACTURER", "MODEL #", "PRICE", "QUANTITY"};
+		tableOrderData = new CartTable(columnNamesOrd, 36);
+		order_table.setLayout(new BorderLayout(0, 0));
+		tableOrder = new JTable(tableOrderData);
+		tableOrder.setRowSelectionAllowed(true);
+		tableOrder.setFillsViewportHeight(true); 
+		JScrollPane spOrder = new JScrollPane(tableOrder);
+		tableOrder.setPreferredScrollableViewportSize(new Dimension(400, 300));
+		order_table.add(tableOrder.getTableHeader(), BorderLayout.PAGE_START);
+		order_table.add(spOrder, BorderLayout.CENTER);
+		order_tab.add(order_table, BorderLayout.CENTER);
+		
+		// Buttons along bottom: add to cart; remove from cart; refresh table
+		JPanel order_controls = new JPanel();
+		order_controls.setComponentOrientation(ComponentOrientation.LEFT_TO_RIGHT);
+		order_tab.add(order_controls, BorderLayout.SOUTH);
+		order_controls.setLayout(new FlowLayout(FlowLayout.LEFT, 5, 5));
+		JLabel lblOidcart = new JLabel("Order ID:");
+		order_controls.add(lblOidcart);
+		final JTextField txtOidCart = new JTextField();
+		txtOidCart.setText("");
+		order_controls.add(txtOidCart);
+		txtOidCart.setColumns(10);
+		JButton btnSearchOrd = new JButton("Search Orders");			//<--SEARCH ORDERS
+		btnSearchOrd.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				// Get quantity from text box
+				String text = txtOidCart.getText();
+				txtOidCart.setText("");
+				int oid;
+				try {
+					oid = Integer.parseInt(text);
+				} catch(NumberFormatException ex) { // If invalid quantity, make an error dialog
+					JOptionPane.showMessageDialog(frame,
+						    "Please enter a valid OID.",
+						    "",
+						    JOptionPane.WARNING_MESSAGE);
+					return;
+				}
+				System.out.println("Customer GUI - Search Orders clicked: oid = " + oid);
+				// Push command search orders
+			}
+		});
+		order_controls.add(btnSearchOrd);
+		JButton btnRefreshOrd = new JButton("Refresh");				//<--REFRESH PAGE CONTENTS
+		btnRefreshOrd.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				System.out.println("Customer GUI - Refresh Orders clicked");
+			}
+		});
+		order_controls.add(btnRefreshOrd);
+		
+		// Cart sidebar: subtotal, customer discount, shipping, checkout button
+		JPanel ord_review = new JPanel();
+		order_tab.add(ord_review, BorderLayout.EAST);
+		ord_review.setLayout(new MigLayout("", "[73.00px,grow]", "[15px][399.00,grow][][]"));
+		JLabel lblOrdReview = new JLabel("Order Overview:");
+		ord_review.add(lblOrdReview, "cell 0 0,alignx left,aligny top");
+		JPanel ordReview = new JPanel();
+		ord_review.add(ordReview, "cell 0 1,grow");
+		ordReview.setLayout(new BorderLayout(0, 0));
+		JList<String> ordReviewList = new JList<String>();
+		ordReview.add(ordReviewList);
+		JButton btnReRun = new JButton("Re-Run Order");					//<--CHECKOUT
+		btnReRun.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				System.out.println("Customer GUI - Re-Run Order clicked");
+			}
+		});
+		ord_review.add(btnReRun, "cell 0 2");
 		
 		// ====================================================================================================
 		// Login Dialogue Box.

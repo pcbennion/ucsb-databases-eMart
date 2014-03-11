@@ -69,7 +69,7 @@ oid INTEGER,
 iid INTEGER,
 quantity INTEGER,
 PRIMARY KEY(oid, iid),
-FOREIGN KEY (oid) REFERENCES Catalog ON DELETE CASCADE, 
+FOREIGN KEY (oid) REFERENCES Orders ON DELETE CASCADE, 
 FOREIGN KEY (iid) REFERENCES Catalog ON DELETE CASCADE );
 
 //added descriptions table
