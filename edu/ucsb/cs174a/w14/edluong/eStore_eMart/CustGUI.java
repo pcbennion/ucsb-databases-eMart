@@ -26,6 +26,7 @@ public class CustGUI extends JFrame implements Runnable {
 	
 	private JFrame frame;
 	private JDialog login;
+	private JDialog search;
 	private JTable tableCata;
 	private JTable tableCart;
 	private JTable tableOrder;
@@ -199,6 +200,7 @@ public class CustGUI extends JFrame implements Runnable {
 		btnAddTerm.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				System.out.println("Customer GUI - Add Term clicked");
+				search.setVisible(true);
 			}
 		});
 		catalog_search.add(btnAddTerm, "cell 0 2");
@@ -468,6 +470,126 @@ public class CustGUI extends JFrame implements Runnable {
 		login.setBounds(300, 300, 450, 150);
 		login.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
 		login.pack();
+			
+		// ====================================================================================================
+		// Search Popup.
+		// ====================================================================================================
+		search = new JDialog(frame, "Create Search Term:", true);
+		search.setResizable(false);
+		search.setBounds(300, 300, 450, 150);
+		search.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
+		//search.pack();
+		JPanel popupPane = new JPanel();
+		popupPane.setBorder(new EmptyBorder(5, 5, 5, 5));
+		setContentPane(popupPane);
+		popupPane.setLayout(new BorderLayout(0, 0));
+		// OK and cancel buttons
+		JPanel popupControls = new JPanel();
+		popupPane.add(popupControls, BorderLayout.SOUTH);
+		popupControls.setLayout(new FlowLayout(FlowLayout.CENTER, 5, 5));
+		final JButton btnOk = new JButton("OK");
+		popupControls.add(btnOk);
+		JButton btnCancel = new JButton("Cancel");
+		btnCancel.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				search.setVisible(false);
+			}
+		});
+		popupControls.add(btnCancel);
+		// Central panel
+		final JPanel popupCenter = new JPanel();
+		popupPane.add(popupCenter, BorderLayout.CENTER);
+		popupCenter.setLayout(new CardLayout(0, 0));
+			// Attribute search card
+			JPanel searchByAttr = new JPanel();
+			popupCenter.add(searchByAttr, "Search by Attribute");
+			searchByAttr.setLayout(null);
+			final JTextField attrText = new JTextField();
+			attrText.setBounds(244, 12, 182, 19);
+			searchByAttr.add(attrText);
+			attrText.setColumns(10);
+			String attrSelectItems[] = {"Item ID", "Category", "Warranty", "Manufacturer", "Model", "Price"};
+			final JComboBox attrSelect = new JComboBox(attrSelectItems);
+			attrSelect.setBounds(12, 12, 173, 19);
+			searchByAttr.add(attrSelect);
+			// Description search card
+			JPanel searchByDesc = new JPanel();
+			popupCenter.add(searchByDesc, "Search by Description");
+			searchByDesc.setLayout(null);
+			final JTextField descText1 = new JTextField();
+			descText1.setBounds(12, 12, 173, 19);
+			searchByDesc.add(descText1);
+			descText1.setColumns(10);
+			final JTextField descText2 = new JTextField();
+			descText2.setBounds(244, 12, 182, 19);
+			searchByDesc.add(descText2);
+			descText2.setColumns(10);
+			JLabel label = new JLabel("=");
+			label.setBounds(203, 14, 23, 17);
+			searchByDesc.add(label);
+			// Accessory search cards
+			JPanel searchByAccGood = new JPanel();
+			popupCenter.add(searchByAccGood, "AccCard1");
+			JLabel lblSearchForAccessories = new JLabel("Search for accessories of selected item.");
+			searchByAccGood.add(lblSearchForAccessories);
+			JPanel searchByAccBad = new JPanel();
+			popupCenter.add(searchByAccBad, "AccCard2");
+			searchByAccBad.setLayout(new FlowLayout(FlowLayout.CENTER, 5, 5));
+			JLabel lblNoItemSelected = new JLabel("No item selected. Please select an item on the catalog table.");
+			searchByAccBad.add(lblNoItemSelected);
+		// Selection combo box
+		JPanel popupSelect = new JPanel();
+		popupPane.add(popupSelect, BorderLayout.NORTH);
+		popupSelect.setLayout(new BorderLayout(0, 0));
+		String searchSelectItems[] = {"Search by Attribute", "Search by Description", "Search for Accessories"};
+		JComboBox searchSelect = new JComboBox(searchSelectItems);
+		searchSelect.addItemListener(new ItemListener() {
+			public void itemStateChanged(ItemEvent e) {
+				CardLayout c = (CardLayout)popupCenter.getLayout();
+				String s = (String)e.getItem();
+				btnOk.setEnabled(true);
+				if(s == "Search for Accessories") {
+					if(tableCata.getSelectedRow()!=-1) c.show(popupCenter, "AccCard1");
+					else  {c.show(popupCenter, "AccCard2"); btnOk.setEnabled(false);}
+				} else c.show(popupCenter, s);
+			}
+		});
+		// Action listener for OK button
+		btnOk.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				CardLayout c = (CardLayout)popupCenter.getLayout();
+				String s = c.toString();
+				String s1, s2;
+				switch (s) {
+						case "AccCard1":
+							// get IID from catalog table's current selection
+							// push command to contoller
+							search.setVisible(false);
+							break;
+						case "Search by Attribute":
+							s1 = (String)attrSelect.getSelectedItem();
+							s2 = attrText.getText();
+							if(s1 == "Item ID") {
+								s1 = "iid";
+								// push combination of s1 and s2 to controller
+							} else {
+								// push s1 + "=" + s2 to controller
+							}
+							search.setVisible(false);
+							break;
+						case "Search by Description":
+							s1 = descText1.getText();
+							s2 = descText2.getText();
+							// push s1, s2 to controller
+							search.setVisible(false);
+							break;
+					default:
+						return;
+				}
+			}
+		});
+		popupSelect.add(searchSelect, BorderLayout.EAST);
+		search.setContentPane(popupPane);
 		// ====================================================================================================
 	}
 
@@ -477,7 +599,7 @@ public class CustGUI extends JFrame implements Runnable {
 		
 		// Set frame to be visible and open login dialog
 		this.frame.setVisible(true);	
-		login.setVisible(true);
+		//login.setVisible(true);
 	}
 }
 	

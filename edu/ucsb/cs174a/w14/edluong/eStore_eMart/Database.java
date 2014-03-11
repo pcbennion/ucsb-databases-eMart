@@ -39,13 +39,13 @@ public class Database {
 		//mart.ui = ui;
 		
 		// Initialize the connection
-		try {
-			openConnection();
-		} catch (SQLException e) {e.printStackTrace();}
+		//try {
+			//openConnection();
+		//} catch (SQLException e) {e.printStackTrace();}
 		
 		// Run threads
-		Thread t1 = new Thread(mart);
-		t1.start(); 
+		//Thread t1 = new Thread(mart);
+		//t1.start(); 
 		
 		// Invoke JFrames
 		EventQueue.invokeLater(ui);
