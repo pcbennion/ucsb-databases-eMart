@@ -136,13 +136,43 @@ public class eMart implements Runnable{
 		}
 	}
 	/**
-	 * Search customer orders by oid. STUB
+	 * Get all customer orders. STUB
 	 */
 	public static class QueryCustOrders implements MartCmd {
-		public QueryCustOrders() {}
+		private int dest;
+		public QueryCustOrders(int d) {this.dest=d;}
 		@Override
 		public void execute() throws SQLException {
 			// TODO Stub
+			String cmd1;
+			cmd1 ="SELECT * ";
+			cmd1 +="FROM Orders";
+			
+			switch(dest){
+			case Database.DEST_CSTMR:
+				CustGUI.Ref().SetOrdersData(Database.stmt.executeQuery(cmd1));
+			}
+		}
+	}
+	/**
+	 * Search customer orders by oid. STUB
+	 */
+	public static class QueryOrdersOid implements MartCmd {
+		private int oid;
+		private int dest;
+		public QueryOrdersOid(int oid,int d) {this.dest=d;this.oid=oid;}
+		@Override
+		public void execute() throws SQLException {
+			// TODO Stub
+			String cmd1;
+			cmd1 ="SELECT * ";
+			cmd1 +="FROM Orders";
+			cmd1 +="WHERE oid="+oid;
+			
+			switch(dest){
+			case Database.DEST_CSTMR:
+				CustGUI.Ref().SetOrdersData(Database.stmt.executeQuery(cmd1));
+			}
 		}
 	}
 	/**

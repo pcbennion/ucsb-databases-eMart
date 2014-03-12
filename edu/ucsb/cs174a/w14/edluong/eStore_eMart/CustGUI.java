@@ -38,7 +38,7 @@ public class CustGUI extends JFrame implements Runnable {
 	private volatile float SChrg = 0;
 	private volatile CatalogTable tableCataData;
 	private volatile CartTable tableCartData;
-	private volatile CartTable tableOrderData;
+	private volatile OrderTable tableOrderData;
 	private volatile DefaultListModel<String> cartOverview;
 	private volatile DefaultListModel<String> orderOverview;
 	
@@ -69,6 +69,13 @@ public class CustGUI extends JFrame implements Runnable {
 	public void SetCartData(ResultSet rs) throws SQLException {
 		tableCartData.setContents(rs);
 		tableCart.repaint();
+	}
+	/**
+	 * Push a result set to the orders table
+	 */
+	public void SetOrdersData(ResultSet rs) throws SQLException {
+		tableOrderData.setContents(rs);
+		tableOrder.repaint();
 	}
 	/**
 	 * Interpret login return
@@ -387,8 +394,8 @@ public class CustGUI extends JFrame implements Runnable {
 		
 		// Table for displaying items
 		JPanel order_table = new JPanel();
-		String[] columnNamesOrd = {"IID", "CATEGORY", "WARRANTY", "MANUFACTURER", "MODEL #", "PRICE", "QUANTITY"};
-		tableOrderData = new CartTable(columnNamesOrd, 36);
+		String[] columnNamesOrd = {"OID", "CID", "TOTAL"};
+		tableOrderData = new OrderTable(columnNamesOrd, 36);
 		order_table.setLayout(new BorderLayout(0, 0));
 		tableOrder = new JTable(tableOrderData);
 		tableOrder.setRowSelectionAllowed(true);
@@ -428,6 +435,7 @@ public class CustGUI extends JFrame implements Runnable {
 				}
 				System.out.println("Customer GUI - Search Orders clicked: oid = " + oid);
 				// Push command search orders
+				controller.inputCommand(new eMart.QueryOrdersOid(oid,Database.DEST_CSTMR) );
 			}
 		});
 		order_controls.add(btnSearchOrd);
@@ -435,6 +443,11 @@ public class CustGUI extends JFrame implements Runnable {
 		btnRefreshOrd.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				System.out.println("Customer GUI - Refresh Orders clicked");
+				
+				controller.inputCommand(new eMart.QueryCustOrders(Database.DEST_CSTMR));
+				
+				
+				
 			}
 		});
 		order_controls.add(btnRefreshOrd);
@@ -726,6 +739,26 @@ public class CustGUI extends JFrame implements Runnable {
 			cartOverview.addElement("Discount:  "+CDisc+"%");
 			cartOverview.addElement(" ");
 			cartOverview.addElement("TOTAL:$"+(subtotal+subtotal*SChrg-subtotal*CDisc));
+		}
+	}
+	/**
+	 * Table for displaying order entries
+	 */
+	@SuppressWarnings("serial")
+	class OrderTable extends DefaultTableModel {
+		public OrderTable(Object[] obj, int i){super(obj, i);}
+		public void setContents(ResultSet rs) throws SQLException{
+			this.getDataVector().clear();
+			if(rs.next()) {
+	    		int col;
+	    		do{
+	    			Object[] obj = new Object[3];
+	    			for(col=0; col<3; col++) 
+	    				obj[col] =rs.getString(col+1);
+	    			this.addRow(obj);
+	    			
+	    		} while(rs.next());
+			}
 		}
 	}
 }
