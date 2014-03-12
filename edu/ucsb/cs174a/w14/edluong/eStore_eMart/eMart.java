@@ -84,60 +84,33 @@ public class eMart implements Runnable{
 		}
 	}
 	/**
-	 * Search items by attribute. Constructor takes attribute name and value.
+	 * Search items for search terms specified. Constructor takes destination and search term string.
 	 */
-	public static class QueryCatalogAttr implements MartCmd {
-		private String attrname, value;
-		private char op;
-		public QueryCatalogAttr(String attrname, char op, String value) {
-			// Asserts to make sure command fields are kosher
-			assert(Database.CatalogCol.contains(attrname));
-			assert(op == '=' || op == '<' || op == '>');
-			this.attrname=attrname; this.op = op; this.value=value;
-		}
+	public static class QueryCatalogSearch implements MartCmd {
+		private String search;
+		private int dest;
+		public QueryCatalogSearch(int d, String search) {this.dest = d; this.search=search;}
 		@Override
 		public void execute() throws SQLException {
 			// Assemble command string
-			String cmd =  	"SELECT * ";
-			cmd +=			"FROM Catalog c ";
-			cmd +=			"WHERE c." + attrname + " " + op + " " +  value;
-			System.out.println("\tCatalog Query - Hello World! Command = " + cmd);
-			// Execute and return result
-			//return Database.stmt.executeQuery(cmd);
-		}
-	}
-	/**
-	 * Search items by description. Constructor takes attribute name and value.
-	 */
-	public static class QueryCatalogDesc implements MartCmd {
-		private String attrname, value;
-		public QueryCatalogDesc(String attrname, String value) {this.attrname=attrname; this.value=value;}
-		@Override
-		public void execute() throws SQLException {
-			// Assemble command string
-			String cmd =  	"SELECT * ";
-			cmd +=			"FROM Catalog c ";
-			cmd +=			"WHERE c.iid = (SELECT d.iid FROM Descriptions WHERE d.attribute = " + attrname + " AND d.value = " + value + ")";
-			System.out.println("\tCatalog Query - Hello World! Command = " + cmd);
-			// Execute and return result
-			//return Database.stmt.executeQuery(cmd);
-		}
-	}
-	/**
-	 * Search items by accessory. Constructor takes item id.
-	 */
-	public static class QueryCatalogAcc implements MartCmd {
-		private String iid;
-		public QueryCatalogAcc(String iid) {this.iid=iid;}
-		@Override
-		public void execute() throws SQLException {
-			// Assemble command string
-			String cmd =  	"SELECT * ";
-			cmd +=			"FROM Catalog c ";
-			cmd +=			"WHERE c.iid = (SELECT a.iid2 FROM Accessories WHERE a.iid1 = " + iid + ")";
-			System.out.println("\tCatalog Query - Hello World! Command = " + cmd);
-			// Execute and return result
-			//return Database.stmt.executeQuery(cmd);
+			String cmd = 	"SELECT * FROM Catalog WHERE iid = ";
+			cmd +=			"(SELECT UNIQUE c.iid FROM Catalog c ";
+			boolean desc = search.contains("D.");
+			boolean acc  = search.contains("A.");
+			if(desc) {
+				cmd += ", Descriptions d ";
+				if(acc) cmd+=", Accessories a WHERE c.iid=d.iid AND c.iid=a.iid AND ";
+				else cmd+="WHERE c.iid=d.iid AND ";
+			} else if(acc) cmd+=", Accessories a WHERE c.iid=a.iid AND ";
+			else cmd+="WHERE ";
+			cmd +=			search +")";
+			System.out.println("\tCatalog Query - Command = " + cmd);
+			// Execute and push result
+			switch(dest){
+				case Database.DEST_CSTMR:
+					CustGUI.Ref().SetCatalogData(Database.stmt.executeQuery(cmd));
+				default:
+			}
 		}
 	}
 	/**
@@ -163,24 +136,17 @@ public class eMart implements Runnable{
 		}
 	}
 	/**
-	 * Search customer orders by oid. Constructor takes customer id and order id.
+	 * Search customer orders by oid. STUB
 	 */
 	public static class QueryCustOrders implements MartCmd {
-		private String cid, oid;
-		public QueryCustOrders(String cid, String oid) {this.cid=cid; this.oid=oid;}
+		public QueryCustOrders() {}
 		@Override
 		public void execute() throws SQLException {
-			// Assemble command string
-			String cmd =  	"SELECT iid,  ";
-			cmd +=			"FROM Orders o ";
-			cmd +=			"WHERE o.cid = " + cid + " AND o.oid = " + oid;
-			System.out.println("\tCatalog Query - Hello World! Command = " + cmd);
-			// Execute and return result
-			//return Database.stmt.executeQuery(cmd);
+			// TODO Stub
 		}
 	}
 	/**
-	 * Adds/removes item specified by iid. Constructor takes destination, customer id, item id, and quantity (negative for removal).
+	 * Adds/removes cart item specified by iid. Constructor takes destination, customer id, item id, and quantity (negative for removal).
 	 */
 	public static class UpdItemCart implements MartCmd {
 		private String cid, iid;
@@ -197,7 +163,7 @@ public class eMart implements Runnable{
 			if(rs.next()) {
 				System.out.println("\tCart Item Update - Modifying existing entry");
 				int i = rs.getInt(1) + quantity;
-				if(i<0){cmd1 = "DELETE FROM OrderItems WHERE iid = " + iid + " AND oid = (SELECT oid FROM Customers WHERE cid = '" + cid + "')";}
+				if(i<=0){cmd1 = "DELETE FROM OrderItems WHERE iid = " + iid + " AND oid = (SELECT oid FROM Customers WHERE cid = '" + cid + "')";}
 				else {
 					cmd1 = 		"UPDATE OrderItems ";
 					cmd1+= 		"SET quantity = " + i + " ";
@@ -221,7 +187,7 @@ public class eMart implements Runnable{
 		}
 	}
 	/**
-	 * Removes item specified by iid. Constructor takes destination, customer id, and item id.
+	 * Removes cart item specified by iid. Constructor takes destination, customer id, and item id.
 	 */
 	public static class RmItemCart implements MartCmd {
 		private String cid, iid;
@@ -269,22 +235,20 @@ public class eMart implements Runnable{
 		}
 	}
 	/**
-	 * Creates and finalizes a new order from the customer's cart. Empties cart. Constructor takes customer id.
+	 * Creates and finalizes a new order from the customer's cart. STUB
 	 */
 	public static class AddOrder implements MartCmd {
-		private String cid;
-		public AddOrder(String cid) {this.cid=cid;}
+		public AddOrder() {}
 		@Override
 		public void execute() {
 			// TODO Stub
 		}
 	}
 	/**
-	 * Creates and finalizes a copy of an order. Constructor takes customer id and order id.
+	 * Creates and finalizes a copy of an order. STUB
 	 */
 	public static class AddOrderCopy implements MartCmd {
-		private String cid, oid;
-		public AddOrderCopy(String cid, String oid) {this.cid=cid; this.oid=oid;}
+		public AddOrderCopy() {}
 		@Override
 		public void execute() {
 			// TODO Stub
@@ -309,6 +273,16 @@ public class eMart implements Runnable{
 				case Database.DEST_CSTMR:
 					CustGUI.Ref().SetLoginResult(Database.stmt.executeQuery(cmd));
 			}
+		}
+	}
+	/**
+	 * Retrieves customer status, discount, shipping. STUB
+	 */
+	public static class QueryCustStats implements MartCmd {
+		public QueryCustStats() {}
+		@Override
+		public void execute() {
+			// TODO Stub
 		}
 	}
 	// ====================================================================================================

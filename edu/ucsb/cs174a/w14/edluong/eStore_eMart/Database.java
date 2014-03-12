@@ -33,22 +33,24 @@ public class Database {
 		password = args[1];
 		
 		// Initialize interfaces and controllers
-		CustGUI ui = CustGUI.Ref();
+		CustGUI cGUI = CustGUI.Ref();
+		MngrGUI mGUI = MngrGUI.Ref();
 		eMart mart = eMart.Ref();
 		//ui.mart = mart;
 		//mart.ui = ui;
 		
 		// Initialize the connection
-		//try {
-			//openConnection();
-		//} catch (SQLException e) {e.printStackTrace();}
+		try {
+			openConnection();
+		} catch (SQLException e) {e.printStackTrace();}
 		
 		// Run threads
-		//Thread t1 = new Thread(mart);
-		//t1.start(); 
+		Thread t1 = new Thread(mart);
+		t1.start(); 
 		
 		// Invoke JFrames
-		EventQueue.invokeLater(ui);
+		EventQueue.invokeLater(cGUI);
+		EventQueue.invokeLater(mGUI);
 	}
 	
 	/**
