@@ -2,7 +2,6 @@ package edu.ucsb.cs174a.w14.edluong.eStore_eMart;
 
 import java.awt.EventQueue;
 import java.sql.*;
-import java.util.*;
 
 public class Database {
 	
@@ -16,9 +15,6 @@ public class Database {
 	public static Statement stmt;
 	private static String username, password;
 	private static String strConn = "jdbc:oracle:thin:@uml.cs.ucsb.edu:1521:xe";
-	
-	public static final List<String> CatalogCol 
-		= Arrays.asList("iid", "category", "warranty", "price", "manufacturer", "model");
 	
 	/**
 	 * Main function
@@ -35,9 +31,9 @@ public class Database {
 		// Initialize interfaces and controllers
 		CustGUI cGUI = CustGUI.Ref();
 		MngrGUI mGUI = MngrGUI.Ref();
+		WareGUI wGUI = WareGUI.Ref();
 		eMart mart = eMart.Ref();
-		//ui.mart = mart;
-		//mart.ui = ui;
+		eStore store = eStore.Ref();
 		
 		// Initialize the connection
 		try {
@@ -46,11 +42,14 @@ public class Database {
 		
 		// Run threads
 		Thread t1 = new Thread(mart);
+		Thread t2 = new Thread(store);
 		t1.start(); 
+		t2.start();
 		
 		// Invoke JFrames
 		EventQueue.invokeLater(cGUI);
 		EventQueue.invokeLater(mGUI);
+		EventQueue.invokeLater(wGUI);
 	}
 	
 	/**

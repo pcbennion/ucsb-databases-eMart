@@ -72,13 +72,16 @@ public class eMart implements Runnable{
 		@Override
 		public void execute() throws SQLException {
 			// Assemble command string
-			String cmd =  	"SELECT * ";
+			String cmd =  	"SELECT c.iid, c.category, c.manufacturer, c.model, c.warranty, c.price ";
 			cmd +=			"FROM Catalog c";
-			System.out.println("\tCatalog Query - Hello World! Command = " + cmd);
+			System.out.println("\tCatalog Query - Command = " + cmd);
 			// Execute and push result
 			switch(dest){
 				case Database.DEST_CSTMR:
 					CustGUI.Ref().SetCatalogData(Database.stmt.executeQuery(cmd));
+				case Database.DEST_MANAG:
+					MngrGUI.Ref().SetCatalogData(Database.stmt.executeQuery(cmd));
+					eStore.Ref().inputCommand(new eStore.QueryItemQuantity(dest));
 				default:
 			}
 		}
@@ -93,22 +96,42 @@ public class eMart implements Runnable{
 		@Override
 		public void execute() throws SQLException {
 			// Assemble command string
-			String cmd = 	"SELECT * FROM Catalog WHERE iid = ";
-			cmd +=			"(SELECT UNIQUE c.iid FROM Catalog c ";
+			String cmd = 	"SELECT c.iid, c.category, c.manufacturer, c.model, c.warranty, c.price FROM Catalog c ";
 			boolean desc = search.contains("D.");
 			boolean acc  = search.contains("A.");
 			if(desc) {
 				cmd += ", Descriptions d ";
 				if(acc) cmd+=", Accessories a WHERE c.iid=d.iid AND c.iid=a.iid AND ";
 				else cmd+="WHERE c.iid=d.iid AND ";
-			} else if(acc) cmd+=", Accessories a WHERE c.iid=a.iid AND ";
+			} else if(acc) cmd+=", Accessories a WHERE c.iid=a.iid2 AND ";
 			else cmd+="WHERE ";
-			cmd +=			search +")";
+			cmd +=			search;
 			System.out.println("\tCatalog Query - Command = " + cmd);
 			// Execute and push result
 			switch(dest){
 				case Database.DEST_CSTMR:
 					CustGUI.Ref().SetCatalogData(Database.stmt.executeQuery(cmd));
+				case Database.DEST_MANAG:
+					MngrGUI.Ref().SetCatalogData(Database.stmt.executeQuery(cmd));
+					eStore.Ref().inputCommand(new eStore.QueryItemQuantity(dest));
+				default:
+			}
+		}
+	}
+	/**
+	 * Hands off a item quantities from eStore to a controller within this domain
+	 */
+	public static class PushItemQuantity implements MartCmd {
+		private ResultSet rs;
+		private int dest;
+		public PushItemQuantity(int d, ResultSet rs){this.dest=d; this.rs=rs;}
+		@Override
+		public void execute() throws SQLException {
+			System.out.println("\tRelay Stock Quantity");
+			// Push result to destination
+			switch(dest) {
+				case Database.DEST_MANAG:
+					MngrGUI.Ref().SetCatalogQuantityData(rs);
 				default:
 			}
 		}
@@ -136,17 +159,19 @@ public class eMart implements Runnable{
 		}
 	}
 	/**
-	 * Get all customer orders. STUB
+	 * Get all customer orders.
 	 */
 	public static class QueryCustOrders implements MartCmd {
+		private String cid;
 		private int dest;
-		public QueryCustOrders(int d) {this.dest=d;}
+		public QueryCustOrders(int d, String cid) {this.dest=d;this.cid=cid;}
 		@Override
 		public void execute() throws SQLException {
-			// TODO Stub
+			// Assemble command string
 			String cmd1;
 			cmd1 ="SELECT * ";
-			cmd1 +="FROM Orders";
+			cmd1 +="FROM Orders ";
+			cmd1 +="WHERE isCart = 0 AND cid = '" + cid + "'";
 			
 			switch(dest){
 			case Database.DEST_CSTMR:
@@ -157,17 +182,18 @@ public class eMart implements Runnable{
 	/**
 	 * Search customer orders by oid. STUB
 	 */
-	public static class QueryOrdersOid implements MartCmd {
+	public static class QueryCustOrdersOid implements MartCmd {
+		private String cid;
 		private int oid;
 		private int dest;
-		public QueryOrdersOid(int oid,int d) {this.dest=d;this.oid=oid;}
+		public QueryCustOrdersOid(int d, int oid, String cid) {this.dest=d;this.cid=cid;this.oid=oid;}
 		@Override
 		public void execute() throws SQLException {
-			// TODO Stub
+			// Assemble command string
 			String cmd1;
 			cmd1 ="SELECT * ";
-			cmd1 +="FROM Orders";
-			cmd1 +="WHERE oid="+oid;
+			cmd1 +="FROM Orders ";
+			cmd1 +="WHERE oid="+oid + " AND isCart = 0 AND cid = '" + cid + "'";
 			
 			switch(dest){
 			case Database.DEST_CSTMR:
@@ -210,7 +236,7 @@ public class eMart implements Runnable{
 			System.out.println("\tCart Item Update - Command = " + cmd1);
 			switch(dest){
 				case Database.DEST_CSTMR:
-					rs = Database.stmt.executeQuery(cmd1);
+					Database.stmt.executeQuery(cmd1);
 					CustGUI.Ref().SetCartData(Database.stmt.executeQuery(cmd2));
 				default:
 			}
@@ -268,10 +294,23 @@ public class eMart implements Runnable{
 	 * Creates and finalizes a new order from the customer's cart. STUB
 	 */
 	public static class AddOrder implements MartCmd {
-		public AddOrder() {}
+		private String cid;
+		private int dest;
+		public AddOrder(int d, String cid) {this.dest=d; this.cid=cid;}
 		@Override
-		public void execute() {
-			// TODO Stub
+		public void execute() throws SQLException {
+			// Create new order
+			String cmd =	"INSERT INTO ";
+			cmd+=			"VALUES(null, 0, 0, "+cid+") ";
+			cmd+=			"OUTPUT inserted.oid";
+			ResultSet rs = Database.stmt.executeQuery(cmd);
+			assert(rs.next()); String oid = rs.getString(1);
+			// Copy all items in cart into order
+			cmd =	"INSERT OrderItems ";
+			cmd+=	"SELECT o.oid, i.iid, i.quantity, c.price ";
+			cmd+=	"FROM Orders o, OrderItems i, Catalog c ";
+			cmd+=	"WHERE o.oid = "+oid+" AND i.oid = (SELECT oid FROM Customers WHERE cid="+cid+") AND c.iid=i.iid";
+			
 		}
 	}
 	/**
@@ -294,25 +333,200 @@ public class eMart implements Runnable{
 		@Override
 		public void execute() throws SQLException {
 			// Assemble command string
-			String cmd =  	"SELECT cid ";
+			String cmd =  	"SELECT c.cid, c.isAdmin ";
 			cmd +=			"FROM Customers c ";
-			cmd +=			"WHERE c.cid = '" + user + "' AND c.password = '" + pass +"'" ;
+			cmd +=			"WHERE c.cid = '" + user + "' AND c.password = '" + pass +"'";
 			System.out.println("\tLogin Query - Command = " + cmd);
+			ResultSet rs = Database.stmt.executeQuery(cmd);
+			rs.next(); System.out.println(rs.getString(1));
 			// Pass to appropriate function
 			switch(dest) {
 				case Database.DEST_CSTMR:
 					CustGUI.Ref().SetLoginResult(Database.stmt.executeQuery(cmd));
+				case Database.DEST_MANAG:
+					MngrGUI.Ref().SetLoginResult(Database.stmt.executeQuery(cmd));
+				default:
 			}
 		}
 	}
 	/**
-	 * Retrieves customer status, discount, shipping. STUB
+	 * Retrieves customer status, discount, shipping. Takes destination, cid
 	 */
 	public static class QueryCustStats implements MartCmd {
-		public QueryCustStats() {}
+		private String cid;
+		private int dest;
+		public QueryCustStats(int d, String cid) {this.dest=d; this.cid=cid;}
+		@Override
+		public void execute() throws SQLException {
+			// Assemble command string
+			String cmd =  	"SELECT c.status, s.value, s1.value ";
+			cmd +=			"FROM Customers c, Status s, Status s1 ";
+			cmd +=			"WHERE c.cid = '" + cid + "' AND c.status=s.status AND s1.status='Shipping'";
+			System.out.println("\tLogin Query - Command = " + cmd);
+			// Pass to appropriate function
+			switch(dest) {
+				case Database.DEST_CSTMR:
+					CustGUI.Ref().SetCustInfo(Database.stmt.executeQuery(cmd));
+				default:
+			}
+		}
+	}
+	/**
+	 * Get all orders (and relevant info). Takes destination
+	 */
+	public static class QueryOrders implements MartCmd {
+		private int dest;
+		public QueryOrders(int d) {this.dest=d;}
+		@Override
+		public void execute() throws SQLException {
+			// Assemble command strings
+			String cmd1 =  	"SELECT o.oid, o.cid, o.total ";
+			cmd1 +=			"FROM Orders o ";
+			cmd1 +=			"WHERE o.isCart=0 ";
+			String cmd2 = 	"SELECT COUNT(o.oid), SUM(o.total) FROM Orders o GROUP BY o.oid";
+			System.out.println("\tOrders Query - Command = " + cmd1);
+			// Pass to appropriate function
+			switch(dest) {
+				case Database.DEST_MANAG:
+					MngrGUI.Ref().SetOrdersData(Database.stmt.executeQuery(cmd1));
+					MngrGUI.Ref().SetOrdersResults(Database.stmt.executeQuery(cmd2));
+				default:
+			}
+		}
+	}
+	/**
+	 * Get orders (and relevant info) specified by search string. Takes destination, search string 
+	 */
+	public static class QueryOrdersSearch implements MartCmd {
+		private String s;
+		private int dest;
+		public QueryOrdersSearch(int d, String s) {this.dest=d; this.s=s;}
+		@Override
+		public void execute() throws SQLException {
+			// Assemble command strings
+			String cmd1, cmd2;
+			if(s.contains("O.")) {
+				cmd1 ="SELECT o.oid, o.cid, o.total FROM Orders o WHERE o.isCart=0 AND "+s+" ";
+				cmd2 ="SELECT COUNT(o.oid), SUM(o.total) FROM Orders o WHERE o.isCart=0 AND "+s+" GROUP BY o.oid";
+			} else {
+				cmd1 ="SELECT o.oid, o.cid, o.total FROM Orders o, OrderItems i WHERE o.isCart=0 AND o.oid=i.iid AND "+s+" ";
+				cmd2 ="SELECT SUM(i.quantity), SUM(i.price) FROM OrderItems i, Orders o WHERE o.isCart=0 AND o.oid=i.iid AND "+s+" GROUP BY i.iid";
+			}
+			System.out.println("\tOrders Search Query - Command = " + cmd1);
+			// Pass to appropriate function
+			switch(dest) {
+				case Database.DEST_MANAG:
+					MngrGUI.Ref().SetOrdersData(Database.stmt.executeQuery(cmd1));
+					MngrGUI.Ref().SetOrdersResults(Database.stmt.executeQuery(cmd2));
+				default:
+			}
+		}
+	}
+	/**
+	 * Get items and quantities in order. Takes destination, oid
+	 */
+	public static class QueryOrderItems implements MartCmd {
+		private String oid;
+		private int dest;
+		public QueryOrderItems(int d, String oid) {this.dest=d; this.oid=oid;}
+		@Override
+		public void execute() throws SQLException {
+			// Assemble command strings
+			String cmd = 	"SELECT i.iid, i.quantity, i.price ";
+			cmd +=			"FROM OrderItems i ";
+			cmd +=			"WHERE i.oid="+oid;
+			System.out.println("\tOrder Item Query - Command = " + cmd);
+			// Pass to appropriate function
+			switch(dest) {
+				case Database.DEST_CSTMR:
+					CustGUI.Ref().SetOrdersOverview(Database.stmt.executeQuery(cmd));
+				case Database.DEST_MANAG:
+					MngrGUI.Ref().SetOrdersOverview(Database.stmt.executeQuery(cmd));
+				default:
+			}
+		}
+	}
+	/**
+	 * Delete order by oid. Takes destination, oid. Skips orders that are needed for customer status and cart
+	 */
+	public static class RmOrderOid implements MartCmd {
+		private String oid;
+		private int dest;
+		public RmOrderOid(int d, String oid) {this.dest=d; this.oid=oid;}
+		@Override
+		public void execute() throws SQLException {
+			// Assemble command string
+			String cmd =  	"DELETE FROM Orders ";
+			cmd +=			"WHERE isCart=0 AND oid = "+oid+" AND oid != ";
+			cmd +=			"(SELECT o.oid FROM Orders o, PurHistory p ";
+			cmd +=			"WHERE o.oid=p.oid1 OR o.oid=p.oid2 OR o.oid=p.oid3)";
+			System.out.println("\tRemove Order - Command = " + cmd);
+			// Pass to appropriate function
+			switch(dest) {
+				case Database.DEST_EMART:
+					Database.stmt.executeQuery(cmd);
+				default:
+			}
+		}
+	}
+	/**
+	 * Delete all unnecessary orders. Takes destination
+	 */
+	public static class RmOrders implements MartCmd {
+		private int dest;
+		public RmOrders(int d) {this.dest=d;}
+		@Override
+		public void execute() throws SQLException {
+			// Assemble command string
+			String cmd =  	"DELETE FROM Orders ";
+			cmd +=			"WHERE isCart=0 AND oid != ";
+			cmd +=			"(SELECT o.oid FROM Orders o, PurHistory p ";
+			cmd +=			"WHERE o.oid=p.oid1 OR o.oid=p.oid2 OR o.oid=p.oid3)";
+			System.out.println("\tRemove All Orders - Command = " + cmd);
+			// Pass to appropriate function
+			switch(dest) {
+				case Database.DEST_EMART:
+					Database.stmt.executeQuery(cmd);
+				default:
+			}
+		}
+	}
+	/**
+	 * Changes the price of iid. Takes destination, iid, and new price
+	 */
+	public static class UpdCatalogPrice implements MartCmd {
+		String iid;
+		int dest, price;
+		public UpdCatalogPrice(int d, String iid, int price) {this.dest=d; this.iid=iid; this.price=price;}
+		@Override
+		public void execute() throws SQLException {
+			// Assemble command string
+			String cmd =  	"UPDATE Catalog ";
+			cmd += 			"SET price = " + price + " ";
+			cmd += 			"WHERE iid = " + iid;
+			System.out.println("\tAlter Price of Item - Command = " + cmd);
+			// Execute command
+			switch(dest) {
+				case Database.DEST_EMART:
+					Database.stmt.executeQuery(cmd);
+				default:
+			}
+		}
+	}
+	/**
+	 * Tell eStore to restock iid to full. Takes destination, iid
+	 */
+	public static class AddRestockOrder implements MartCmd {
+		private String iid;
+		private int dest;
+		public AddRestockOrder(int d, String iid) {this.dest=d; this.iid=iid;}
 		@Override
 		public void execute() {
-			// TODO Stub
+			switch(dest) {
+				case Database.DEST_ESTOR:
+					// TODO execute appropriate eStore callback
+				default:
+			}
 		}
 	}
 	// ====================================================================================================

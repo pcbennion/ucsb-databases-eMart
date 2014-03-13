@@ -5,6 +5,8 @@ import java.awt.event.*;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
 import javax.swing.table.*;
 
 import com.jgoodies.forms.factories.*;
@@ -89,26 +91,32 @@ public class CustGUI extends JFrame implements Runnable {
     		// Initialize info on all panels
     		controller.inputCommand(new eMart.QueryCatalog(Database.DEST_CSTMR));
     		controller.inputCommand(new eMart.QueryCartItems(Database.DEST_CSTMR, CID));
-		}
+    		controller.inputCommand(new eMart.QueryCustOrders(Database.DEST_CSTMR, CID));
+    		controller.inputCommand(new eMart.QueryCustStats(Database.DEST_CSTMR, CID));
+		} else login.setEnabled(true);
 	}
 	/**
-	 * Sets displayed data in the order overview list
+	 * Push order overview to order summary list
 	 */
-	public void SetOrderInfo(ResultSet rs) throws SQLException {
+	public void SetOrdersOverview(ResultSet rs) throws SQLException {
 		orderOverview.clear();
-		while(rs.next()) {
-			int i = rs.getInt(2);
-			orderOverview.addElement(i+"x "+rs.getString(1));
+		int i = tableOrder.getSelectedRow();
+		if(i!=-1) {
+			while(rs.next()) orderOverview.addElement(rs.getString(1)+"x "+rs.getString(2)+": $"+rs.getString(3));
+			orderOverview.addElement(" ");
+			orderOverview.addElement("---");
+			String s=(String)tableOrderData.getValueAt(i, 2);
+			orderOverview.addElement("TOTAL: $"+s);
 		}
-		orderOverview.addElement("---");
-		orderOverview.addElement("TOTAL: $");
 	}
 	/**
 	 * Updates stored customer and shipping information
 	 */
 	public void SetCustInfo(ResultSet rs) throws SQLException {
 		if(rs.next()) {
-		} else {
+			this.CStatus=rs.getString(1);
+			this.CDisc	=rs.getFloat(2);
+			this.SChrg	=rs.getFloat(3);
 		}
 	}
 	
@@ -122,6 +130,7 @@ public class CustGUI extends JFrame implements Runnable {
 			s += searchTermList.get(i);
 		}
 		if(!s.isEmpty()) controller.inputCommand(new eMart.QueryCatalogSearch(Database.DEST_CSTMR, s));
+		else controller.inputCommand(new eMart.QueryCatalog(Database.DEST_CSTMR));
 	}
 
 	/**
@@ -148,7 +157,7 @@ public class CustGUI extends JFrame implements Runnable {
 		// Table for displaying items
 		JPanel catalog_table = new JPanel();
 		String[] columnNamesCata = {"IID", "CATEGORY", "WARRANTY", "PRICE", "MANUFACTURER", "MODEL #"};
-		tableCataData = new CatalogTable(columnNamesCata, 36);
+		tableCataData = new CatalogTable(columnNamesCata, 0);
 		catalog_table.setLayout(new BorderLayout(0, 0));
 		tableCata = new JTable(tableCataData);
 		tableCata.setRowSelectionAllowed(true);
@@ -170,7 +179,7 @@ public class CustGUI extends JFrame implements Runnable {
 		txtQty.setText("");
 		catalog_controls.add(txtQty);
 		txtQty.setColumns(10);
-		JButton btnAddToCart = new JButton("Add to Cart");			//<--ADD TO CART
+		JButton btnAddToCart = new JButton("Add to Cart");							//<--ADD TO CART
 		btnAddToCart.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				// Get quantity from text box
@@ -202,7 +211,7 @@ public class CustGUI extends JFrame implements Runnable {
 			}
 		});
 		catalog_controls.add(btnAddToCart);
-		JButton btnRemoveFromCart = new JButton("Remove from Cart");//<--REMOVE FROM CART
+		JButton btnRemoveFromCart = new JButton("Remove from Cart");				//<--REMOVE FROM CART
 		btnRemoveFromCart.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				// Grab iid from currently selected row in catalog table
@@ -221,7 +230,7 @@ public class CustGUI extends JFrame implements Runnable {
 			}
 		});
 		catalog_controls.add(btnRemoveFromCart);
-		JButton btnRefresh = new JButton("Refresh");				//<--REFRESH PAGE CONTENTS
+		JButton btnRefresh = new JButton("Refresh");								//<--REFRESH PAGE CONTENTS
 		btnRefresh.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				System.out.println("Customer GUI - Refresh Cart clicked");
@@ -242,7 +251,7 @@ public class CustGUI extends JFrame implements Runnable {
 		searchTermList = new DefaultListModel<String>();
 		final JList<String> searchTermJList = new JList<String>(searchTermList);
 		searchTerms.add(new JScrollPane(searchTermJList));
-		JButton btnAddTerm = new JButton(" Add Term...");			//<--ADD NEW SEARCH TERM
+		JButton btnAddTerm = new JButton(" Add Term...");							//<--ADD NEW SEARCH TERM
 		btnAddTerm.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				System.out.println("Customer GUI - Add Term clicked");
@@ -250,7 +259,7 @@ public class CustGUI extends JFrame implements Runnable {
 			}
 		});
 		catalog_search.add(btnAddTerm, "cell 0 2");
-		JButton btnClearTerms = new JButton("Clear Terms");			//<--CLEAR ALL SEARCH TERMS
+		JButton btnClearTerms = new JButton("Clear Terms");							//<--CLEAR ALL SEARCH TERMS
 		btnClearTerms.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				System.out.println("Customer GUI - Clear Terms clicked");
@@ -272,7 +281,7 @@ public class CustGUI extends JFrame implements Runnable {
 		// Table for displaying items
 		JPanel cart_table = new JPanel();
 		String[] columnNamesCart = {"IID", "CATEGORY", "WARRANTY", "MANUFACTURER", "MODEL #", "PRICE", "QUANTITY"};
-		tableCartData = new CartTable(columnNamesCart, 36);
+		tableCartData = new CartTable(columnNamesCart, 0);
 		cart_table.setLayout(new BorderLayout(0, 0));
 		tableCart = new JTable(tableCartData);
 		tableCart.setRowSelectionAllowed(true);
@@ -294,7 +303,7 @@ public class CustGUI extends JFrame implements Runnable {
 		txtQtyCart.setText("");
 		cart_controls.add(txtQtyCart);
 		txtQtyCart.setColumns(10);
-		JButton btnUpdCart = new JButton("Update Quantity");			//<--UPDATE CART QUANTITY
+		JButton btnUpdCart = new JButton("Update Quantity");						//<--UPDATE CART QUANTITY
 		btnUpdCart.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				// Get quantity from text box
@@ -327,7 +336,7 @@ public class CustGUI extends JFrame implements Runnable {
 			}
 		});
 		cart_controls.add(btnUpdCart);
-		JButton btnCartRemove = new JButton("Remove from Cart");		//<--REMOVE FROM CART
+		JButton btnCartRemove = new JButton("Remove from Cart");					//<--REMOVE FROM CART
 		btnCartRemove.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				// Grab iid from currently selected row in catalog table
@@ -346,8 +355,8 @@ public class CustGUI extends JFrame implements Runnable {
 			}
 		});
 		cart_controls.add(btnCartRemove);
-		JButton btnRefreshCart = new JButton("Refresh");				//<--REFRESH PAGE CONTENTS
-		btnRefreshCart.addActionListener(new ActionListener() {
+		JButton btnRefreshCart = new JButton("Refresh");							//<--REFRESH PAGE CONTENTS
+		btnRefreshCart.addActionListener(new ActionListener() {	
 			public void actionPerformed(ActionEvent arg0) {
 				System.out.println("Customer GUI - Refresh Catalog clicked");
 				controller.inputCommand(new eMart.QueryCartItems(Database.DEST_CSTMR, CID));
@@ -368,14 +377,15 @@ public class CustGUI extends JFrame implements Runnable {
 		cartOverview = new DefaultListModel<String>();
 		JList<String> cartTotalList = new JList<String>(cartOverview);
 		cartTotal.add(new JScrollPane(cartTotalList));
-		JButton btnCkout = new JButton("Checkout ");					//<--CHECKOUT
+		JButton btnCkout = new JButton("Checkout ");								//<--CHECKOUT
 		btnCkout.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				System.out.println("Customer GUI - Checkout clicked");
+				controller.inputCommand(new eMart.AddOrder()); //TODO
 			}
 		});
 		cart_ckout.add(btnCkout, "cell 0 2");
-		JButton btnClearCart = new JButton("Clear Cart");				//<--CLEAR CART
+		JButton btnClearCart = new JButton("Clear Cart");							//<--CLEAR CART
 		btnClearCart.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				System.out.println("Customer GUI - Clear cart clicked");
@@ -395,13 +405,13 @@ public class CustGUI extends JFrame implements Runnable {
 		// Table for displaying items
 		JPanel order_table = new JPanel();
 		String[] columnNamesOrd = {"OID", "CID", "TOTAL"};
-		tableOrderData = new OrderTable(columnNamesOrd, 36);
+		tableOrderData = new OrderTable(columnNamesOrd, 0);
 		order_table.setLayout(new BorderLayout(0, 0));
 		tableOrder = new JTable(tableOrderData);
 		tableOrder.setRowSelectionAllowed(true);
 		tableOrder.setFillsViewportHeight(true); 
 		JScrollPane spOrder = new JScrollPane(tableOrder);
-		tableOrder.setPreferredScrollableViewportSize(new Dimension(400, 300));
+		tableOrder.setPreferredScrollableViewportSize(new Dimension(200, 300));
 		order_table.add(tableOrder.getTableHeader(), BorderLayout.PAGE_START);
 		order_table.add(spOrder, BorderLayout.CENTER);
 		order_tab.add(order_table, BorderLayout.CENTER);
@@ -417,7 +427,7 @@ public class CustGUI extends JFrame implements Runnable {
 		txtOidCart.setText("");
 		order_controls.add(txtOidCart);
 		txtOidCart.setColumns(10);
-		JButton btnSearchOrd = new JButton("Search Orders");			//<--SEARCH ORDERS
+		JButton btnSearchOrd = new JButton("Search Orders");						//<--SEARCH ORDERS
 		btnSearchOrd.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				// Get quantity from text box
@@ -435,16 +445,16 @@ public class CustGUI extends JFrame implements Runnable {
 				}
 				System.out.println("Customer GUI - Search Orders clicked: oid = " + oid);
 				// Push command search orders
-				controller.inputCommand(new eMart.QueryOrdersOid(oid,Database.DEST_CSTMR) );
+				controller.inputCommand(new eMart.QueryCustOrdersOid(Database.DEST_CSTMR, oid, CID) );
 			}
 		});
 		order_controls.add(btnSearchOrd);
-		JButton btnRefreshOrd = new JButton("Refresh");				//<--REFRESH PAGE CONTENTS
+		JButton btnRefreshOrd = new JButton("Refresh");								//<--REFRESH PAGE CONTENTS
 		btnRefreshOrd.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				System.out.println("Customer GUI - Refresh Orders clicked");
 				
-				controller.inputCommand(new eMart.QueryCustOrders(Database.DEST_CSTMR));
+				controller.inputCommand(new eMart.QueryCustOrders(Database.DEST_CSTMR, CID));
 				
 				
 				
@@ -454,6 +464,7 @@ public class CustGUI extends JFrame implements Runnable {
 		
 		// Cart sidebar: subtotal, customer discount, shipping, checkout button
 		JPanel ord_review = new JPanel();
+		ord_review.setPreferredSize(new Dimension(300, 300));
 		order_tab.add(ord_review, BorderLayout.EAST);
 		ord_review.setLayout(new MigLayout("", "[73.00px,grow]", "[15px][399.00,grow][][]"));
 		JLabel lblOrdReview = new JLabel("Order Overview:");
@@ -464,10 +475,21 @@ public class CustGUI extends JFrame implements Runnable {
 		orderOverview = new DefaultListModel<String>();
 		JList<String> ordReviewList = new JList<String>(orderOverview);
 		ordReview.add(new JScrollPane(ordReviewList));
-		JButton btnReRun = new JButton("Re-Run Order");					//<--CHECKOUT
+		JButton btnReRun = new JButton("Re-Run Order");								//<--RE-RUN ORDER
 		btnReRun.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				System.out.println("Customer GUI - Re-Run Order clicked");
+				controller.inputCommand(new eMart.AddOrderCopy()); //TODO
+			}
+		});
+		tableOrder.getSelectionModel().addListSelectionListener(new ListSelectionListener() { //<--ON TABLE SELECTION CHANGED
+			public void valueChanged(ListSelectionEvent e) {
+				// Get new list selection. If not nothing, ask controller for order details
+				int selected = e.getFirstIndex();
+				String oid = "";
+				if(selected != -1) oid = (String) tableOrderData.getValueAt(selected, 0);
+				System.out.println("Manager GUI - Order selection changed: oid = "+oid);
+				if(oid != null) controller.inputCommand(new eMart.QueryOrderItems(Database.DEST_CSTMR,oid));
 			}
 		});
 		ord_review.add(btnReRun, "cell 0 2");
@@ -561,7 +583,7 @@ public class CustGUI extends JFrame implements Runnable {
 			attrText.setBounds(244, 12, 182, 19);
 			searchByAttr.add(attrText);
 			attrText.setColumns(10);
-			String attrSelectItems[] = {"Item ID", "Category", "Warranty", "Manufacturer", "Model", "Price"};
+			String attrSelectItems[] = {"Item ID", "Category", "Manufacturer", "Model", "Warranty", "Price"};
 			final JComboBox<String> attrSelect = new JComboBox<String>(attrSelectItems);
 			attrSelect.setBounds(12, 12, 173, 19);
 			searchByAttr.add(attrSelect);
@@ -686,7 +708,7 @@ public class CustGUI extends JFrame implements Runnable {
 	 * Table for displaying catalog items
 	 */
 	@SuppressWarnings("serial")
-	class CatalogTable extends DefaultTableModel {
+	private class CatalogTable extends DefaultTableModel {
 		public CatalogTable(Object[] obj, int i){super(obj, i);}
 		public void setContents(ResultSet rs) throws SQLException{
 			this.getDataVector().clear();
@@ -706,7 +728,7 @@ public class CustGUI extends JFrame implements Runnable {
 	 * Table for displaying a customer's cart. Keeps a running tally of item quantity and subtotal
 	 */
 	@SuppressWarnings("serial")
-	class CartTable extends DefaultTableModel {
+	private class CartTable extends DefaultTableModel {
 		public CartTable(Object[] obj, int i){super(obj, i);}
 		public void setContents(ResultSet rs) throws SQLException{
 			this.getDataVector().clear();
@@ -745,7 +767,7 @@ public class CustGUI extends JFrame implements Runnable {
 	 * Table for displaying order entries
 	 */
 	@SuppressWarnings("serial")
-	class OrderTable extends DefaultTableModel {
+	private class OrderTable extends DefaultTableModel {
 		public OrderTable(Object[] obj, int i){super(obj, i);}
 		public void setContents(ResultSet rs) throws SQLException{
 			this.getDataVector().clear();
