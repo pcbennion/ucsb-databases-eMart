@@ -47,9 +47,9 @@ public class Database {
 		t2.start();
 		
 		// Invoke JFrames
-		EventQueue.invokeLater(cGUI);
+		
 		EventQueue.invokeLater(mGUI);
-		EventQueue.invokeLater(wGUI);
+		EventQueue.invokeLater(wGUI);EventQueue.invokeLater(cGUI);
 	}
 	
 	/**

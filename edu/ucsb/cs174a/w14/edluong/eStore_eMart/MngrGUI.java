@@ -689,7 +689,7 @@ public class MngrGUI extends JFrame implements Runnable {
 		
 		// Set frame to be visible and open login dialog
 		this.frame.setVisible(true);	
-		login.setVisible(true);
+		//login.setVisible(true);
 	}
 	
 	

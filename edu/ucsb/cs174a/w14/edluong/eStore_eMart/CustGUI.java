@@ -156,7 +156,7 @@ public class CustGUI extends JFrame implements Runnable {
 		
 		// Table for displaying items
 		JPanel catalog_table = new JPanel();
-		String[] columnNamesCata = {"IID", "CATEGORY", "WARRANTY", "PRICE", "MANUFACTURER", "MODEL #"};
+		String[] columnNamesCata = {"IID", "CATEGORY", "MANUFACTURER", "MODEL #", "WARRANTY", "PRICE"};
 		tableCataData = new CatalogTable(columnNamesCata, 0);
 		catalog_table.setLayout(new BorderLayout(0, 0));
 		tableCata = new JTable(tableCataData);
@@ -381,7 +381,7 @@ public class CustGUI extends JFrame implements Runnable {
 		btnCkout.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				System.out.println("Customer GUI - Checkout clicked");
-				controller.inputCommand(new eMart.AddOrder()); //TODO
+				controller.inputCommand(new eMart.AddOrderCart(Database.DEST_EMART, CID));
 			}
 		});
 		cart_ckout.add(btnCkout, "cell 0 2");
@@ -477,9 +477,20 @@ public class CustGUI extends JFrame implements Runnable {
 		ordReview.add(new JScrollPane(ordReviewList));
 		JButton btnReRun = new JButton("Re-Run Order");								//<--RE-RUN ORDER
 		btnReRun.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-				System.out.println("Customer GUI - Re-Run Order clicked");
-				controller.inputCommand(new eMart.AddOrderCopy()); //TODO
+			public void actionPerformed(ActionEvent e) {
+				// Grab iid from currently selected row in catalog table
+				int selected = tableOrder.getSelectedRow();
+				if(selected == -1) { // If no selection, make an error dialog
+					JOptionPane.showMessageDialog(frame,
+						    "No item selected.",
+						    "",
+						    JOptionPane.WARNING_MESSAGE);
+					return;
+				}
+				String oid = (String)tableOrderData.getValueAt(selected, 0);
+				System.out.println("Customer GUI - Re-Run Order clicked: oid = "+oid);
+				// Push command to change cart contents
+				controller.inputCommand(new eMart.RmItemCart(Database.DEST_CSTMR, CID, oid));
 			}
 		});
 		tableOrder.getSelectionModel().addListSelectionListener(new ListSelectionListener() { //<--ON TABLE SELECTION CHANGED
@@ -698,7 +709,8 @@ public class CustGUI extends JFrame implements Runnable {
 		
 		// Set frame to be visible and open login dialog
 		this.frame.setVisible(true);	
-		login.setVisible(true);
+		//login.setVisible(true);
+		controller.inputCommand(new eMart.QueryLogin(Database.DEST_CSTMR, "Pquirrell", "Pquirrell"));
 	}
 	
 	// ====================================================================================================

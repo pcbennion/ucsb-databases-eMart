@@ -159,7 +159,7 @@ public class eStore implements Runnable{
 		@Override
 		public void execute() throws SQLException {
 			//Assemble command string
-			String cmd =  	"SELECT s.location, s.quantity, s.max, s.replentishment ";
+			String cmd =  	"SELECT s.location, s.quantity, s.max, s.replenishment ";
 			cmd +=			"FROM Stock s ";
 			cmd +=			"WHERE s.iid = "+iid;
 			System.out.println("\tAdd Restock Request - Command = " + cmd);
@@ -170,11 +170,12 @@ public class eStore implements Runnable{
 			while(rs.next()) {
 				location = rs.getString(1);
 				qty = rs.getInt(2); max=rs.getInt(3); rep = rs.getInt(4);
-				cmd = "SELECT * FROM Requests WHERE iid="+iid+" AND location="+location;
+				cmd = "SELECT * FROM Requests WHERE iid="+iid+" AND location='"+location+"'";
 				rs2=Database.stmt.executeQuery(cmd);
 				if(qty<max && !rs2.next()) {
 					cmd =			"INSERT INTO Requests ";
-					cmd+=			"VALUES("+iid+", "+location+", "+(max-(qty+rep))+")";
+					cmd+=			"VALUES((SELECT iid FROM Stock WHERE iid="+iid+"), "
+							+ "(SELECT location FROM Stock WHERE location='"+location+"'), "+(max-(qty+rep))+")";
 					Database.stmt.executeQuery(cmd);
 				}
 			}
@@ -254,7 +255,7 @@ public class eStore implements Runnable{
 				FileInputStream in = new FileInputStream("./"+s);
 				BufferedReader br = new BufferedReader(new InputStreamReader(in, Charset.forName("UTF-8")));
 				String line;
-				String cmd, sid, com, loc, iid, qty;
+				String cmd, sid, com, mod, iid, loc, qty;
 				if ((line = br.readLine()) != null) {
 				    String[] tok =  line.split(" ");
 				    if(tok.length!=3) {br.close();return;}
@@ -270,7 +271,17 @@ public class eStore implements Runnable{
 					while((line = br.readLine()) != null) {
 						tok =  line.split(" ");
 					    if(tok.length!=2) {br.close();return;}
-					    qty=tok[0]; iid=tok[1];
+					    qty=tok[0]; mod=tok[1];
+					    cmd = "SELECT iid FROM Catalog WHERE Manufacturer="+com+" AND Model="+mod;
+					    rs = Database.stmt.executeQuery(cmd);
+					    if(rs.next()) {iid = rs.getString(1);} 
+					    else {
+					    	cmd = "INSERT INTO Catalog VALUES(null, 'Unassigned', 0, 1000, "+com+", "+mod+") OUTPUT inserted.iid";
+					    	rs = Database.stmt.executeQuery(cmd);
+					    	rs.next(); iid=rs.getString(1);
+					    	cmd = "INSERT INTO Stock VALUES("+iid+", "+loc+", "+qty+", "+(Integer.parseInt(qty)/2)+", "+qty+", 0)";
+					    	Database.stmt.executeQuery(cmd);
+					    }
 					    cmd = "INSERT INTO ShipmentItems VALUES("+sid+", "+iid+", "+qty+")";
 					    Database.stmt.executeQuery(cmd);
 					}
@@ -294,6 +305,69 @@ public class eStore implements Runnable{
 			cmd +=			"WHERE sid = "+sid;
 			System.out.println("\tRemove Shipment - Command = " + cmd);
 			Database.stmt.executeQuery(cmd);
+		}
+	}
+	/**
+	 * Checks stock quantities to see if order can be fulfilled, then fulfills them. Takes dest, oid, cid
+	 */
+	public static class FullfillOrder implements StoreCmd {
+		private String cid, oid;
+		private int dest;
+		public FullfillOrder(int d, String cid, String oid){this.dest=d; this.cid=cid; this.oid=oid;}
+		@Override
+		public void execute() throws SQLException {
+			// Check to see if there is enough in stock for the order
+			String cmd =  	"SELECT quantity, (SELECT SUM(s.quantity) FROM OrderItems i, Stock s "
+					+ "WHERE i.iid=s.iid AND i.oid = "+oid+" GROUP BY s.iid)"
+					+ "FROM OrderItems";
+			ResultSet rs = Database.stmt.executeQuery(cmd);
+			int oqty, sqty;
+			while(rs.next()) {
+				oqty=0; sqty=0;
+				oqty=rs.getInt(1);
+				sqty=rs.getInt(2);
+				if(oqty>sqty) return; // if we're being fancy, tell eMart to push an error message here
+			}
+			// If we get here, order can be fulfilled. Remove needed quantities of items from the stock
+			// Try to remove as much as possible from single locations
+			cmd =	"SELECT quantity FROM OrderItems WHERE oid = "+oid;
+			rs = Database.stmt.executeQuery(cmd);
+			String iid, location;
+			while(rs.next()) {
+				oqty=0; oqty=rs.getInt(1);
+				cmd = "SELECT s.iid, s.location, s.quantity FROM OrderItems i, Stock s WHERE i.iid=s.iid AND i.oid = "+oid+" ";
+				ResultSet rs2 = Database.stmt.executeQuery(cmd);
+				while(oqty>0 && rs2.next()) { 
+					iid=""; iid=rs2.getString(1);
+					location=""; location=rs2.getString(2);
+					sqty=0; sqty=rs2.getInt(3);
+					if(oqty>sqty) {
+						cmd = "UPDATE Stock SET quantity = 0 WHERE iid="+iid+" AND location='"+location+"'";
+						oqty-=sqty;
+					} else {
+						cmd = "UPDATE Stock SET quantity = "+(sqty-oqty)+" WHERE iid="+iid+" AND location='"+location+"'";
+						oqty=0;
+					}
+					Database.stmt.executeQuery(cmd);
+				}
+			}
+			// We're done with eStore's part. Pass back to eMart to finalize order
+			eMart.Ref().inputCommand(new eMart.AddOrder(dest, cid, oid));
+			// Now get current and min stock levels. Add restock requests as needed
+			cmd = 	"SELECT s.iid, s.quantity, s.min ";
+			cmd+=	"FROM Stock s, OrderItems i ";
+			cmd+=	"WHERE i.iid=s.iid AND i.oid = "+oid+"";
+			rs = Database.stmt.executeQuery(cmd);
+			int min;
+			while(rs.next()) {
+				iid=""; sqty=0; min=0;
+				iid=rs.getString(1); 
+				sqty=rs.getInt(2); 
+				min=rs.getInt(3);
+				if(sqty<min) {
+					ref.inputCommand(new eStore.AddRestockReq(Database.DEST_ESTOR, iid));
+				}
+			}
 		}
 	}
 }

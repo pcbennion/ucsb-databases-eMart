@@ -101,7 +101,7 @@ public class eMart implements Runnable{
 			boolean acc  = search.contains("A.");
 			if(desc) {
 				cmd += ", Descriptions d ";
-				if(acc) cmd+=", Accessories a WHERE c.iid=d.iid AND c.iid=a.iid AND ";
+				if(acc) cmd+=", Accessories a WHERE c.iid=d.iid AND c.iid=a.iid2 AND ";
 				else cmd+="WHERE c.iid=d.iid AND ";
 			} else if(acc) cmd+=", Accessories a WHERE c.iid=a.iid2 AND ";
 			else cmd+="WHERE ";
@@ -228,7 +228,7 @@ public class eMart implements Runnable{
 			} else {
 				System.out.println("\tCart Item Update - No entry found, inserting");
 				cmd1 = 		"INSERT INTO OrderItems ";
-				cmd1+= 		"VALUES ((SELECT oid FROM Customers WHERE cid = '" + cid + "'), " + iid + ", " + quantity + ")";
+				cmd1+= 		"VALUES ((SELECT oid FROM Orders WHERE cid = '" + cid + "' AND isCart=1), " + iid + ", 0, " + quantity + ")";
 			}
 			String cmd2 =  	"SELECT c.iid, c.category, c.warranty, c.manufacturer, c.model, c.price, o.quantity ";
 			cmd2 +=			"FROM OrderItems o, Catalog c ";
@@ -291,36 +291,109 @@ public class eMart implements Runnable{
 		}
 	}
 	/**
-	 * Creates and finalizes a new order from the customer's cart. STUB
+	 * Starts the process of creating an order from the customer's cart. Takes destination and cid
 	 */
-	public static class AddOrder implements MartCmd {
+	public static class AddOrderCart implements MartCmd {
 		private String cid;
 		private int dest;
-		public AddOrder(int d, String cid) {this.dest=d; this.cid=cid;}
+		public AddOrderCart(int d, String cid) {this.dest=d; this.cid=cid;}
 		@Override
 		public void execute() throws SQLException {
-			// Create new order
-			String cmd =	"INSERT INTO ";
-			cmd+=			"VALUES(null, 0, 0, "+cid+") ";
-			cmd+=			"OUTPUT inserted.oid";
+			// Get customer's cart's oid
+			String cmd = "SELECT oid FROM Orders WHERE cid = '"+cid+"' AND isCart=1";
 			ResultSet rs = Database.stmt.executeQuery(cmd);
-			assert(rs.next()); String oid = rs.getString(1);
-			// Copy all items in cart into order
-			cmd =	"INSERT OrderItems ";
-			cmd+=	"SELECT o.oid, i.iid, i.quantity, c.price ";
-			cmd+=	"FROM Orders o, OrderItems i, Catalog c ";
-			cmd+=	"WHERE o.oid = "+oid+" AND i.oid = (SELECT oid FROM Customers WHERE cid="+cid+") AND c.iid=i.iid";
-			
+			rs.next(); String oid = rs.getString(1);
+			// Ask eStore to check item quantities
+			//eStore.Ref().inputCommand(new eStore.FullfillOrder(dest, cid, oid));
+			ref.inputCommand(new eMart.AddOrder(dest, cid, oid));
 		}
 	}
 	/**
-	 * Creates and finalizes a copy of an order. STUB
+	 * Creates and finalizes a copy of an order. Takes destination, cid, oid
 	 */
 	public static class AddOrderCopy implements MartCmd {
-		public AddOrderCopy() {}
+		private String cid, oid;
+		private int dest;
+		public AddOrderCopy(int d, String cid, String oid) {this.dest=d; this.cid=cid; this.oid=oid;}
 		@Override
 		public void execute() {
-			// TODO Stub
+			// Ask eStore to check item quantities
+			eStore.Ref().inputCommand(new eStore.FullfillOrder(dest, cid, oid));
+		}
+	}
+	/**
+	 * Finalize an order that has been fulfilled by the eStore. Takes destination, cid, oid
+	 */
+	public static class AddOrder implements MartCmd {
+		private String cid, oid;
+		@SuppressWarnings("unused")
+		private int dest;
+		public AddOrder(int d, String cid, String oid) {this.dest=d; this.cid=cid; this.oid=oid;}
+		@Override
+		public void execute() throws SQLException {
+			// Create new order entry, get its ID
+			String cmd = 	"SELECT oid_seq.nextval as newID FROM Dual ";
+			ResultSet rs = Database.stmt.executeQuery(cmd);
+			rs.next(); int newoid = rs.getInt(1);
+			cmd =			"INSERT INTO Orders ";
+			cmd+=			"VALUES((SELECT oid FROM Orders WHERE oid='"+newoid+"'), 0, 0, "
+					+ "(SELECT cid FROM Customers WHERE cid='"+cid+"'), SYSDATE) ";
+			Database.stmt.executeQuery(cmd);
+			newoid+=1;
+			// Copy all items in source order into dest order
+			cmd =	"INSERT INTO OrderItems ";
+			cmd=	"SELECT o.oid, i.iid, c.price, i.quantity ";
+			cmd+=	"FROM Orders o, OrderItems i, Catalog c ";
+			cmd+=	"WHERE o.oid = "+newoid+" AND i.oid = "+oid+" AND c.iid=i.iid";
+			rs = Database.stmt.executeQuery(cmd);
+			// Update order total
+			cmd = 	"SELECT SUM(i.price) FROM OrderItems i WHERE i.oid="+newoid+" GROUP BY i.iid";
+			rs = Database.stmt.executeQuery(cmd);
+			float total, disc, ship;
+			if(rs.next()) {
+				total = rs.getFloat(1);
+				cmd = "SELECT s1.value as Disc, s2.value as Ship FROM Customers c, Status s1, Status s2 "
+						+ "WHERE c.cid = '"+cid+"' AND s1.status=c.status AND s2.status='Shipping'";
+				rs = Database.stmt.executeQuery(cmd);
+				rs.next(); 
+				disc=rs.getFloat(1); 
+				ship=rs.getFloat(2);
+				if(total>100f) ship = 0.0f;
+				total = total - disc*total + ship*total;
+			} else total = 0;
+			cmd =	"UPDATE Orders ";
+			cmd+=	"SET total = "+total+" ";
+			cmd+=	"WHERE oid = "+newoid;
+			Database.stmt.executeQuery(cmd);
+			// If source was a cart, remove all items
+			cmd = 	"DELETE FROM OrderItems ";
+			cmd+=	"WHERE oid = (SELECT oid FROM Orders WHERE cid='"+cid+"' AND oid="+oid+" AND isCart=1)";
+			Database.stmt.executeQuery(cmd);
+			// Update order history, customer status
+			cmd =	"UPDATE PurHistory p SET ";
+			cmd+=	"p.oid1 = (SELECT oid FROM (SELECT * FROM Orders ORDER BY dop) o WHERE ROWNUM = 1 AND o.cid='"+cid+"'), ";
+			cmd+=	"p.oid2 = (SELECT oid FROM (SELECT * FROM Orders ORDER BY dop) o WHERE ROWNUM = 2 AND o.cid='"+cid+"'), ";
+			cmd+=	"p.oid3 = (SELECT oid FROM (SELECT * FROM Orders ORDER BY dop) o WHERE ROWNUM = 3 AND o.cid='"+cid+"') ";
+			cmd+=	"WHERE p.cid = (SELECT cid FROM Customers WHERE cid = '"+cid+"')";
+			Database.stmt.executeQuery(cmd);
+			cmd =	"SELECT SUM(o.total) ";
+			cmd+=	"FROM Orders o, PurHistory p ";
+			cmd+=	"WHERE o.oid=p.oid1 OR o.oid=p.oid2 OR o.oid=p.oid3 ";
+			cmd+=	"GROUP BY o.oid ";
+			rs = Database.stmt.executeQuery(cmd);
+			if(rs.next()) { 
+				total = rs.getFloat(1);
+				String newStatus = "Green";
+				if(total>500f) newStatus = "Gold";
+				else if(total>100f) newStatus = "Silver";
+				cmd =	"UPDATE Customers ";
+				cmd+=	"status = (SELECT s.status FROM Status s WHERE s.status="+newStatus+")";
+				cmd+=	"WHERE cid='"+cid+"'";
+				Database.stmt.executeQuery(cmd);
+			}
+			// Pass updates to CustGUI
+			ref.inputCommand(new eMart.QueryCartItems(Database.DEST_CSTMR, cid));
+			ref.inputCommand(new eMart.QueryCustOrders(Database.DEST_EMART, cid));
 		}
 	}
 	/**
@@ -337,8 +410,6 @@ public class eMart implements Runnable{
 			cmd +=			"FROM Customers c ";
 			cmd +=			"WHERE c.cid = '" + user + "' AND c.password = '" + pass +"'";
 			System.out.println("\tLogin Query - Command = " + cmd);
-			ResultSet rs = Database.stmt.executeQuery(cmd);
-			rs.next(); System.out.println(rs.getString(1));
 			// Pass to appropriate function
 			switch(dest) {
 				case Database.DEST_CSTMR:
@@ -524,7 +595,7 @@ public class eMart implements Runnable{
 		public void execute() {
 			switch(dest) {
 				case Database.DEST_ESTOR:
-					// TODO execute appropriate eStore callback
+					eStore.Ref().inputCommand(new eStore.AddRestockReq(dest, iid));
 				default:
 			}
 		}
