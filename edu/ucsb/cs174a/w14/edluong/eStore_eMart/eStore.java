@@ -78,6 +78,8 @@ public class eStore implements Runnable{
 			cmd +=			"FROM Stock s ";
 			cmd +=			"GROUP BY s.iid";
 			System.out.println("\tStock Quantity Query - Command = " + cmd);
+			ResultSet rs = Database.stmt.executeQuery(cmd);
+			if(!rs.next()) System.out.println("oops");
 			// Push to appropriate destination
 			switch(dest) {
 				case Database.DEST_MANAG:
@@ -193,7 +195,7 @@ public class eStore implements Runnable{
 		public void execute() throws SQLException {
 			//Assemble and execute command string
 			String cmd =  	"DELETE FROM Requests ";
-			cmd +=			"WHERE iid = "+iid+" AND location = "+loc;
+			cmd +=			"WHERE iid = "+iid+" AND location = '"+loc+"'";
 			System.out.println("\tRemove Restock Request - Command = " + cmd);
 			Database.stmt.executeQuery(cmd);
 		}
@@ -317,9 +319,12 @@ public class eStore implements Runnable{
 		@Override
 		public void execute() throws SQLException {
 			// Check to see if there is enough in stock for the order
-			String cmd =  	"SELECT quantity, (SELECT SUM(s.quantity) FROM OrderItems i, Stock s "
-					+ "WHERE i.iid=s.iid AND i.oid = "+oid+" GROUP BY s.iid)"
-					+ "FROM OrderItems";
+			String cmd =  	"select i.quantity, sumlist.sum "
+					+ "from orderitems i, (	 SELECT s.iid as id, SUM(s.quantity) as sum "
+					+ 						"from orderitems i, stock s "
+					+ 						"where i.iid=s.iid and i.oid=4 "
+					+ 						"group by s.iid ) sumlist "
+					+ "where i.oid=4 and i.iid=sumlist.id";
 			ResultSet rs = Database.stmt.executeQuery(cmd);
 			int oqty, sqty;
 			while(rs.next()) {

@@ -37,6 +37,7 @@ public class MngrGUI extends JFrame implements Runnable {
 	// Members that can be operated on by other threads
 	private volatile String CID = null;
 	private volatile CatalogTable tableCataData;
+	private volatile Vector<Integer> cataQty;
 	private volatile OrderTable tableOrderData;
 	private volatile DefaultListModel<String> orderOverview;
 	private volatile DefaultListModel<String> orderResults;
@@ -70,15 +71,14 @@ public class MngrGUI extends JFrame implements Runnable {
 	 */
 	public void SetCatalogQuantityData(ResultSet rs) throws SQLException {
 		// Loop through entire result set, putting quantity into slots matched by iid
-		while(rs.next()) {
-			int i=0;
-			@SuppressWarnings("unchecked")
-			Vector<Vector<Object>> v = tableOrderData.getDataVector();
-			if(v.isEmpty()) return;
-			String iid = rs.getString(1);
-			String qty = rs.getString(2);
-			while(v.get(i).get(0)!=iid) {if(i>=v.size()) break; i++;}
-			if(i<v.size()) tableOrderData.setValueAt(qty, i, 5);
+		cataQty.clear();
+		if(rs.next()) {
+			do{
+				String iid = rs.getString(1);
+				int qty = rs.getInt(2);
+				System.out.println(iid+" "+qty);
+				cataQty.add(qty);
+			} while (rs.next());
 		}
 		tableCata.repaint();
 	}
@@ -118,7 +118,14 @@ public class MngrGUI extends JFrame implements Runnable {
 		orderOverview.clear();
 		int i = tableOrder.getSelectedRow();
 		if(i!=-1) {
-			while(rs.next()) orderOverview.addElement(rs.getString(1)+"x "+rs.getString(2)+": $"+rs.getString(3));
+			int j=0;
+			if(rs.next()) {
+				do{
+					System.out.println(j++);
+					System.out.println(rs.getString(2)+"x "+rs.getString(1)+": $"+rs.getString(3));
+					orderOverview.addElement(rs.getString(2)+"x "+rs.getString(1)+": $"+rs.getString(3));
+				} while(rs.next());
+			}
 			orderOverview.addElement(" ");
 			orderOverview.addElement("---");
 			String s=(String)tableOrderData.getValueAt(i, 2);
@@ -186,6 +193,7 @@ public class MngrGUI extends JFrame implements Runnable {
 		// Table for displaying items
 		JPanel catalog_table = new JPanel();
 		String[] columnNamesCata = {"IID", "CATEGORY", "MANUFACTURER", "MODEL #", "PRICE", "STOCK"};
+		cataQty = new Vector<Integer>();
 		tableCataData = new CatalogTable(columnNamesCata, 0);
 		tableCata = new JTable(tableCataData);
 		tableCata.setRowSelectionAllowed(true);
@@ -339,7 +347,7 @@ public class MngrGUI extends JFrame implements Runnable {
 						    JOptionPane.WARNING_MESSAGE);
 					return;
 				}
-				String oid = (String)tableCataData.getValueAt(selected, 0);
+				String oid = (String)tableOrderData.getValueAt(selected, 0);
 				System.out.println("Manager GUI - Delete Order clicked: oid = "+oid);
 				// Push command to remove order
 				controller.inputCommand(new eMart.RmOrderOid(Database.DEST_EMART, oid));
@@ -383,11 +391,12 @@ public class MngrGUI extends JFrame implements Runnable {
 		tableOrder.getSelectionModel().addListSelectionListener(new ListSelectionListener() { //<--ON TABLE SELECTION CHANGED
 			public void valueChanged(ListSelectionEvent e) {
 				// Get new list selection. If not nothing, ask controller for order details
-				int selected = e.getFirstIndex();
+				if(e.getValueIsAdjusting()) return;
+				int selected = tableOrder.getSelectedRow();
 				String oid = "";
-				if(selected != -1) oid = (String) tableOrderData.getValueAt(selected, 0);
+				if(selected != -1 && selected<tableOrderData.getDataVector().size()) oid = (String) tableOrderData.getValueAt(selected, 0);
 				System.out.println("Manager GUI - Order selection changed: oid = "+oid);
-				if(oid != null) controller.inputCommand(new eMart.QueryOrderItems(Database.DEST_MANAG,oid));
+				if(oid != "") controller.inputCommand(new eMart.QueryOrderItems(Database.DEST_MANAG,oid));
 			}
 		});
 		
@@ -689,7 +698,8 @@ public class MngrGUI extends JFrame implements Runnable {
 		
 		// Set frame to be visible and open login dialog
 		this.frame.setVisible(true);	
-		//login.setVisible(true);
+		login.setVisible(true);
+		//controller.inputCommand(new eMart.QueryLogin(Database.DEST_MANAG, "Sblack", "Sblack"));
 	}
 	
 	
@@ -704,6 +714,7 @@ public class MngrGUI extends JFrame implements Runnable {
 		public CatalogTable(Object[] obj, int i){super(obj, i);}
 		public void setContents(ResultSet rs) throws SQLException{
 			this.getDataVector().clear();
+			int row = 0;
 			if(rs.next()) {
 	    		int col;
 	    		do{
@@ -711,6 +722,8 @@ public class MngrGUI extends JFrame implements Runnable {
 	    			for(col=0; col<4; col++) 
 	    				obj[col] =rs.getString(col+1);
 	    			obj[col]=rs.getString(col+2); // skip over warranty - not important to manager
+	    			if(row<cataQty.size())
+	    				obj[5]=cataQty.get(row);
 	    			this.addRow(obj);
 	    		} while(rs.next());
 			}

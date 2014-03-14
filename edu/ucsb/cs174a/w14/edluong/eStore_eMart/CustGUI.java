@@ -90,9 +90,9 @@ public class CustGUI extends JFrame implements Runnable {
     		login.setVisible(false);
     		// Initialize info on all panels
     		controller.inputCommand(new eMart.QueryCatalog(Database.DEST_CSTMR));
+    		controller.inputCommand(new eMart.QueryCustStats(Database.DEST_CSTMR, CID));
     		controller.inputCommand(new eMart.QueryCartItems(Database.DEST_CSTMR, CID));
     		controller.inputCommand(new eMart.QueryCustOrders(Database.DEST_CSTMR, CID));
-    		controller.inputCommand(new eMart.QueryCustStats(Database.DEST_CSTMR, CID));
 		} else login.setEnabled(true);
 	}
 	/**
@@ -102,7 +102,14 @@ public class CustGUI extends JFrame implements Runnable {
 		orderOverview.clear();
 		int i = tableOrder.getSelectedRow();
 		if(i!=-1) {
-			while(rs.next()) orderOverview.addElement(rs.getString(1)+"x "+rs.getString(2)+": $"+rs.getString(3));
+			int j=0;
+			if(rs.next()) {
+				do{
+					System.out.println(j++);
+					System.out.println(rs.getString(2)+"x "+rs.getString(1)+": $"+rs.getString(3));
+					orderOverview.addElement(rs.getString(2)+"x "+rs.getString(1)+": $"+rs.getString(3));
+				} while(rs.next());
+			}
 			orderOverview.addElement(" ");
 			orderOverview.addElement("---");
 			String s=(String)tableOrderData.getValueAt(i, 2);
@@ -117,6 +124,7 @@ public class CustGUI extends JFrame implements Runnable {
 			this.CStatus=rs.getString(1);
 			this.CDisc	=rs.getFloat(2);
 			this.SChrg	=rs.getFloat(3);
+			System.out.println(CStatus + " " + CDisc+ " "+SChrg);
 		}
 	}
 	
@@ -359,6 +367,7 @@ public class CustGUI extends JFrame implements Runnable {
 		btnRefreshCart.addActionListener(new ActionListener() {	
 			public void actionPerformed(ActionEvent arg0) {
 				System.out.println("Customer GUI - Refresh Catalog clicked");
+				controller.inputCommand(new eMart.QueryCustStats(Database.DEST_CSTMR, CID));
 				controller.inputCommand(new eMart.QueryCartItems(Database.DEST_CSTMR, CID));
 			}
 		});
@@ -496,11 +505,12 @@ public class CustGUI extends JFrame implements Runnable {
 		tableOrder.getSelectionModel().addListSelectionListener(new ListSelectionListener() { //<--ON TABLE SELECTION CHANGED
 			public void valueChanged(ListSelectionEvent e) {
 				// Get new list selection. If not nothing, ask controller for order details
-				int selected = e.getFirstIndex();
+				if(e.getValueIsAdjusting()) return;
+				int selected = tableOrder.getSelectedRow();
 				String oid = "";
-				if(selected != -1) oid = (String) tableOrderData.getValueAt(selected, 0);
+				if(selected != -1 && selected<tableOrderData.getDataVector().size()) oid = (String) tableOrderData.getValueAt(selected, 0);
 				System.out.println("Manager GUI - Order selection changed: oid = "+oid);
-				if(oid != null) controller.inputCommand(new eMart.QueryOrderItems(Database.DEST_CSTMR,oid));
+				if(oid != "") controller.inputCommand(new eMart.QueryOrderItems(Database.DEST_CSTMR,oid));
 			}
 		});
 		ord_review.add(btnReRun, "cell 0 2");
@@ -709,8 +719,8 @@ public class CustGUI extends JFrame implements Runnable {
 		
 		// Set frame to be visible and open login dialog
 		this.frame.setVisible(true);	
-		//login.setVisible(true);
-		controller.inputCommand(new eMart.QueryLogin(Database.DEST_CSTMR, "Pquirrell", "Pquirrell"));
+		login.setVisible(true);
+		//controller.inputCommand(new eMart.QueryLogin(Database.DEST_CSTMR, "Pquirrell", "Pquirrell"));
 	}
 	
 	// ====================================================================================================
@@ -745,7 +755,7 @@ public class CustGUI extends JFrame implements Runnable {
 		public void setContents(ResultSet rs) throws SQLException{
 			this.getDataVector().clear();
 			int quantity = 0;
-			int subtotal = 0;
+			float subtotal = 0;
 			if(rs.next()) {
 	    		int col;
 	    		do{
@@ -756,7 +766,7 @@ public class CustGUI extends JFrame implements Runnable {
 	    			this.addRow(obj);
 	    			i = rs.getInt(7);
 	    			quantity += i;
-	    			subtotal += rs.getInt(6)*i;
+	    			subtotal += rs.getFloat(6)*i;
 	    		} while(rs.next());
 			}
 			cartOverview.clear();

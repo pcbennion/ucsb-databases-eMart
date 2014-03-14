@@ -72,7 +72,14 @@ public class WareGUI extends JFrame implements Runnable {
 		shipmentOverview.clear();
 		int i = tableShip.getSelectedRow();
 		if(i!=-1) {
-			while(rs.next()) shipmentOverview.addElement(rs.getString(1)+"x "+rs.getString(2)+": $"+rs.getString(3));
+			int j=0;
+			if(rs.next()) {
+				do{
+					System.out.println(j++);
+					System.out.println(rs.getString(2)+"x "+rs.getString(1)+": $"+rs.getString(3));
+					shipmentOverview.addElement(rs.getString(2)+"x "+rs.getString(1)+": $"+rs.getString(3));
+				} while(rs.next());
+			}
 			shipmentOverview.addElement(" ");
 			shipmentOverview.addElement("---");
 			String s=(String)tableShipData.getValueAt(i, 2);
@@ -221,7 +228,7 @@ public class WareGUI extends JFrame implements Runnable {
 		request_controls.add(btnRefreshReq);
 		
 		// ====================================================================================================
-		// Requested Shipments Tab
+		// Shipments Tab
 		// ====================================================================================================
 		// Core tab panel
 		JPanel ship_tab = new JPanel();
@@ -290,7 +297,7 @@ public class WareGUI extends JFrame implements Runnable {
 				controller.inputCommand(new eStore.QueryStock(Database.DEST_WAREH));
 			}
 		});
-		request_controls.add(btnRefreshShip);
+		ship_controls.add(btnRefreshShip);
 		
 		// Shipment sidebar: shipment details
 		JPanel ship_review = new JPanel();
@@ -308,220 +315,25 @@ public class WareGUI extends JFrame implements Runnable {
 		tableShip.getSelectionModel().addListSelectionListener(new ListSelectionListener() { //<--ON TABLE SELECTION CHANGED
 			public void valueChanged(ListSelectionEvent e) {
 				// Get new list selection. If not nothing, ask controller for order details
-				int selected = e.getFirstIndex();
+				if(e.getValueIsAdjusting()) return;
+				int selected = tableShip.getSelectedRow();
 				String sid = "";
-				if(selected != -1) sid = (String) tableShipData.getValueAt(selected, 0);
+				if(selected != -1 && selected<tableShipData.getDataVector().size()) sid = (String) tableShipData.getValueAt(selected, 0);
 				System.out.println("Warehouse GUI - Shipment selection changed: sid = "+sid);
-				if(sid != null) controller.inputCommand(new eStore.QueryShipmentItems(Database.DEST_CSTMR,sid));
+				if(sid != "") controller.inputCommand(new eStore.QueryShipmentItems(Database.DEST_CSTMR,sid));
 			}
 		});
-		
-		
-		/*
-		// ====================================================================================================
-		// Login Dialogue Box.
-		// ====================================================================================================
-		JPanel loginPane = new JPanel();
-		loginPane.setBorder(new EmptyBorder(5, 5, 5, 5));
-		loginPane.setLayout(new BorderLayout(0, 0));
-		// Username and Password fields
-		JPanel loginPanelMain = new JPanel();
-		loginPane.add(loginPanelMain, BorderLayout.CENTER);
-		loginPanelMain.setLayout(new FormLayout(new ColumnSpec[] {
-				FormFactory.RELATED_GAP_COLSPEC,
-				ColumnSpec.decode("max(44dlu;default)"),
-				FormFactory.RELATED_GAP_COLSPEC,
-				ColumnSpec.decode("max(124dlu;default):grow"),
-				FormFactory.RELATED_GAP_COLSPEC,
-				FormFactory.DEFAULT_COLSPEC,},
-			new RowSpec[] {
-				FormFactory.RELATED_GAP_ROWSPEC,
-				FormFactory.DEFAULT_ROWSPEC,
-				FormFactory.RELATED_GAP_ROWSPEC,
-				FormFactory.DEFAULT_ROWSPEC,
-				FormFactory.RELATED_GAP_ROWSPEC,
-				FormFactory.DEFAULT_ROWSPEC,}));
-		JLabel loginUserLbl = new JLabel("Username:");
-		loginPanelMain.add(loginUserLbl, "2, 2, right, default");
-		final JTextField loginUserTxt = new JTextField();
-		loginPanelMain.add(loginUserTxt, "4, 2, fill, default");
-		loginUserTxt.setColumns(10);
-		JLabel loginPassLbl = new JLabel("Password:");
-		loginPanelMain.add(loginPassLbl, "2, 6, right, default");
-		final JTextField loginPassTxt = new JTextField();
-		loginPanelMain.add(loginPassTxt, "4, 6, fill, default");
-		// Login button
-		JPanel loginPanelBtn = new JPanel();
-		loginPane.add(loginPanelBtn, BorderLayout.SOUTH);
-		JButton loginBtn = new JButton("Login");
-		loginBtn.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {			//<-- LOGIN BUTTON
-				// Grab username and password
-				String user = loginUserTxt.getText();
-				String pass = loginPassTxt.getText();
-				loginUserTxt.setText("");
-				loginPassTxt.setText("");
-				System.out.println("CustGUI Login - Login clicked: user = "+user+", pass = "+pass);
-				login.setEnabled(false);
-				// Pass to controller
-			}
-		});
-		loginPanelBtn.add(loginBtn);
-		login = new JDialog(frame, "Login:", true);
-		login.setContentPane(loginPane);
-		login.setResizable(false);
-		login.setBounds(300, 300, 450, 150);
-		login.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
-		login.pack();
-			
-		// ====================================================================================================
-		// Search term Popup.
-		// ====================================================================================================
-		search = new JDialog(frame, "Create Search Term:", true);
-		search.setResizable(false);
-		search.setBounds(300, 300, 450, 150);
-		search.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
-		//search.pack();
-		JPanel popupPane = new JPanel();
-		popupPane.setBorder(new EmptyBorder(5, 5, 5, 5));
-		setContentPane(popupPane);
-		popupPane.setLayout(new BorderLayout(0, 0));
-		// OK and cancel buttons
-		JPanel popupControls = new JPanel();
-		popupPane.add(popupControls, BorderLayout.SOUTH);
-		popupControls.setLayout(new FlowLayout(FlowLayout.CENTER, 5, 5));
-		final JButton btnOk = new JButton("OK");
-		popupControls.add(btnOk);
-		JButton btnCancel = new JButton("Cancel");
-		popupControls.add(btnCancel);
-		// Central panel
-		final JPanel popupCenter = new JPanel();
-		popupPane.add(popupCenter, BorderLayout.CENTER);
-		popupCenter.setLayout(new CardLayout(0, 0));
-			// Attribute search card
-			JPanel searchByAttr = new JPanel();
-			popupCenter.add(searchByAttr, "Search by Attribute");
-			searchByAttr.setLayout(null);
-			final JTextField attrText = new JTextField();
-			attrText.setBounds(244, 12, 182, 19);
-			searchByAttr.add(attrText);
-			attrText.setColumns(10);
-			String attrSelectItems[] = {"Item ID", "Category", "Warranty", "Manufacturer", "Model", "Price"};
-			final JComboBox<String> attrSelect = new JComboBox<String>(attrSelectItems);
-			attrSelect.setBounds(12, 12, 173, 19);
-			searchByAttr.add(attrSelect);
-			// Description search card
-			JPanel searchByDesc = new JPanel();
-			popupCenter.add(searchByDesc, "Search by Description");
-			searchByDesc.setLayout(null);
-			final JTextField descText1 = new JTextField();
-			descText1.setBounds(12, 12, 173, 19);
-			searchByDesc.add(descText1);
-			descText1.setColumns(10);
-			final JTextField descText2 = new JTextField();
-			descText2.setBounds(244, 12, 182, 19);
-			searchByDesc.add(descText2);
-			descText2.setColumns(10);
-			JLabel label = new JLabel("=");
-			label.setBounds(203, 14, 23, 17);
-			searchByDesc.add(label);
-			// Accessory search cards
-			JPanel searchByAccGood = new JPanel();
-			popupCenter.add(searchByAccGood, "AccCard1");
-			JLabel lblSearchForAccessories = new JLabel("Search for accessories of selected item.");
-			searchByAccGood.add(lblSearchForAccessories);
-			JPanel searchByAccBad = new JPanel();
-			popupCenter.add(searchByAccBad, "AccCard2");
-			searchByAccBad.setLayout(new FlowLayout(FlowLayout.CENTER, 5, 5));
-			JLabel lblNoItemSelected = new JLabel("No item selected. Please select an item on the catalog table.");
-			searchByAccBad.add(lblNoItemSelected);
-		// Selection combo box
-		JPanel popupSelect = new JPanel();
-		popupPane.add(popupSelect, BorderLayout.NORTH);
-		popupSelect.setLayout(new BorderLayout(0, 0));
-		String searchSelectItems[] = {"Search by Attribute", "Search by Description", "Search for Accessories"};
-		final JComboBox<String> searchSelect = new JComboBox<String>(searchSelectItems);
-		searchSelect.addItemListener(new ItemListener() {
-			public void itemStateChanged(ItemEvent e) {
-				CardLayout c = (CardLayout)popupCenter.getLayout();
-				String s = (String)e.getItem();
-				btnOk.setEnabled(true);
-				if(s == "Search for Accessories") {
-					if(tableCata.getSelectedRow()!=-1) c.show(popupCenter, "AccCard1");
-					else  {c.show(popupCenter, "AccCard2"); btnOk.setEnabled(false);}
-				} else c.show(popupCenter, s);
-			}
-		});
-		popupSelect.add(searchSelect, BorderLayout.EAST);
-		// Action listener for OK and cancel controls
-		btnOk.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				String s = (String)searchSelect.getSelectedItem();
-				System.out.println("CustGUI Search Popup - OK Clicked: card = "+s);
-				String s1, s2;
-				String cmd;
-				// Switch on the card that is currently visible.
-				switch (s) {
-						case "Search for Accessories":
-							// get IID from catalog table's current selection, assemble command string
-							int selected = tableCata.getSelectedRow();
-							if(selected!=-1) {
-								String iid = (String)tableCataData.getValueAt(selected, 0);
-								cmd = "A.iid1 = '"+iid+"'";
-								searchTermList.addElement(cmd);
-								pushSearch();
-							}
-							search.setVisible(false);
-							searchSelect.setSelectedIndex(0);
-							break;
-						case "Search by Attribute":
-							// Get attribute and value from appropriate text boxes
-							s1 = (String)attrSelect.getSelectedItem();
-							s2 = attrText.getText(); attrText.setText("");
-							if(!s2.isEmpty()) {
-								if(s1 == "Item ID")  s1 = "iid";
-								cmd = "C."+s1+" = '"+s2+"'";
-								searchTermList.addElement(cmd);
-								pushSearch();
-							}
-							search.setVisible(false);
-							break;
-						case "Search by Description":
-							s1 = descText1.getText(); descText1.setText("");
-							s2 = descText2.getText(); descText2.setText("");
-							if(!s1.isEmpty()&&!s2.isEmpty()) {
-								cmd = "D.Attribute = '"+s1+"'";
-								searchTermList.addElement(cmd);
-								cmd = "D.Value = '"+s2+"'";
-								searchTermList.addElement(cmd);
-								pushSearch();
-							}
-							search.setVisible(false);
-							searchSelect.setSelectedIndex(0);
-							break;
-					default:
-						return;
-				}
-			}
-		});
-		btnCancel.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				search.setVisible(false);
-				searchSelect.setSelectedIndex(0);
-				attrText.setText(""); descText1.setText(""); descText2.setText("");
-			}
-		});
-		search.setContentPane(popupPane);*/
-		// ====================================================================================================
 	}
 
 	@Override
 	public void run() {
-		//controller = eMart.Ref();
+		controller = eStore.Ref();
 		
 		// Set frame to be visible and open login dialog
 		this.frame.setVisible(true);	
-		//login.setVisible(true);
+		controller.inputCommand(new eStore.QueryShipments(Database.DEST_WAREH));
+		controller.inputCommand(new eStore.QueryRestock(Database.DEST_WAREH));
+		controller.inputCommand(new eStore.QueryStock(Database.DEST_WAREH));
 	}
 	
 	// ====================================================================================================

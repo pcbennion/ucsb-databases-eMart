@@ -42,7 +42,9 @@ public class Database {
 		
 		// Run threads
 		Thread t1 = new Thread(mart);
+		t1.setPriority(Thread.MAX_PRIORITY);
 		Thread t2 = new Thread(store);
+		t2.setPriority(Thread.MAX_PRIORITY-1);
 		t1.start(); 
 		t2.start();
 		

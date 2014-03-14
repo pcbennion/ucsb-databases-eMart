@@ -79,6 +79,7 @@ public class eMart implements Runnable{
 			switch(dest){
 				case Database.DEST_CSTMR:
 					CustGUI.Ref().SetCatalogData(Database.stmt.executeQuery(cmd));
+					break;
 				case Database.DEST_MANAG:
 					MngrGUI.Ref().SetCatalogData(Database.stmt.executeQuery(cmd));
 					eStore.Ref().inputCommand(new eStore.QueryItemQuantity(dest));
@@ -111,6 +112,7 @@ public class eMart implements Runnable{
 			switch(dest){
 				case Database.DEST_CSTMR:
 					CustGUI.Ref().SetCatalogData(Database.stmt.executeQuery(cmd));
+					break;
 				case Database.DEST_MANAG:
 					MngrGUI.Ref().SetCatalogData(Database.stmt.executeQuery(cmd));
 					eStore.Ref().inputCommand(new eStore.QueryItemQuantity(dest));
@@ -148,7 +150,7 @@ public class eMart implements Runnable{
 			// Assemble command string
 			String cmd =  	"SELECT c.iid, c.category, c.warranty, c.manufacturer, c.model, c.price, o.quantity ";
 			cmd +=			"FROM OrderItems o, Catalog c ";
-			cmd +=			"WHERE o.iid = c.iid AND o.oid = (SELECT oid FROM Customers WHERE cid = '" + cid + "')";
+			cmd +=			"WHERE o.iid = c.iid AND o.oid = (SELECT oid FROM Orders WHERE cid = '" + cid + "' AND isCart=1)";
 			System.out.println("\tCart Query - Command = " + cmd);
 			// Execute and push result
 			switch(dest){
@@ -169,7 +171,7 @@ public class eMart implements Runnable{
 		public void execute() throws SQLException {
 			// Assemble command string
 			String cmd1;
-			cmd1 ="SELECT * ";
+			cmd1 ="SELECT oid, cid, total ";
 			cmd1 +="FROM Orders ";
 			cmd1 +="WHERE isCart = 0 AND cid = '" + cid + "'";
 			
@@ -191,7 +193,7 @@ public class eMart implements Runnable{
 		public void execute() throws SQLException {
 			// Assemble command string
 			String cmd1;
-			cmd1 ="SELECT * ";
+			cmd1 ="SELECT oid, cid, total ";
 			cmd1 +="FROM Orders ";
 			cmd1 +="WHERE oid="+oid + " AND isCart = 0 AND cid = '" + cid + "'";
 			
@@ -214,25 +216,25 @@ public class eMart implements Runnable{
 			String cmd1;
 			cmd1  =  		"SELECT quantity  ";
 			cmd1 +=			"FROM OrderItems ";
-			cmd1 +=			"WHERE iid = " + iid + " AND oid = (SELECT oid FROM Customers WHERE cid = '" + cid + "')";
+			cmd1 +=			"WHERE iid = " + iid + " AND oid = (SELECT oid FROM Orders WHERE cid = '" + cid + "' AND isCart=1)";
 			ResultSet rs = Database.stmt.executeQuery(cmd1);
 			if(rs.next()) {
 				System.out.println("\tCart Item Update - Modifying existing entry");
 				int i = rs.getInt(1) + quantity;
-				if(i<=0){cmd1 = "DELETE FROM OrderItems WHERE iid = " + iid + " AND oid = (SELECT oid FROM Customers WHERE cid = '" + cid + "')";}
+				if(i<=0){cmd1 = "DELETE FROM OrderItems WHERE iid = " + iid + " AND oid = (SELECT oid FROM Orders WHERE cid = '" + cid + "' AND isCart=1)";}
 				else {
 					cmd1 = 		"UPDATE OrderItems ";
 					cmd1+= 		"SET quantity = " + i + " ";
-					cmd1+= 		"WHERE iid = " + iid + " AND oid = (SELECT oid FROM Customers WHERE cid = '" + cid + "')";
+					cmd1+= 		"WHERE iid = " + iid + " AND oid = (SELECT oid FROM Orders WHERE cid = '" + cid + "' AND isCart=1)";
 				}
 			} else {
 				System.out.println("\tCart Item Update - No entry found, inserting");
 				cmd1 = 		"INSERT INTO OrderItems ";
-				cmd1+= 		"VALUES ((SELECT oid FROM Orders WHERE cid = '" + cid + "' AND isCart=1), " + iid + ", 0, " + quantity + ")";
+				cmd1+= 		"VALUES ((SELECT oid FROM Orders WHERE cid = '" + cid + "' AND isCart=1), " + iid + ", (SELECT price from Catalog where iid="+iid+"), " + quantity + ")";
 			}
 			String cmd2 =  	"SELECT c.iid, c.category, c.warranty, c.manufacturer, c.model, c.price, o.quantity ";
 			cmd2 +=			"FROM OrderItems o, Catalog c ";
-			cmd2 +=			"WHERE o.iid = c.iid AND o.oid = (SELECT oid FROM Customers WHERE cid = '" + cid + "')";
+			cmd2 +=			"WHERE o.iid = c.iid AND o.oid = (SELECT oid FROM Orders WHERE cid = '" + cid + "' AND isCart=1)";
 			System.out.println("\tCart Item Update - Command = " + cmd1);
 			switch(dest){
 				case Database.DEST_CSTMR:
@@ -256,7 +258,7 @@ public class eMart implements Runnable{
 			cmd1 +=			"WHERE iid = " + iid + " AND oid = (SELECT oid FROM Customers WHERE cid = '" + cid + "')";
 			String cmd2 =  	"SELECT c.iid, c.category, c.warranty, c.manufacturer, c.model, c.price, o.quantity ";
 			cmd2 +=			"FROM OrderItems o, Catalog c ";
-			cmd2 +=			"WHERE o.iid = c.iid AND o.oid = (SELECT oid FROM Customers WHERE cid = '" + cid + "')";
+			cmd2 +=			"WHERE o.iid = c.iid AND o.oid = (SELECT oid FROM Orders WHERE cid = '" + cid + "' AND isCart=1)";
 			System.out.println("\tCart Item Removal - Command = " + cmd1);
 			switch(dest){
 				case Database.DEST_CSTMR:
@@ -280,7 +282,7 @@ public class eMart implements Runnable{
 			cmd1 +=			"WHERE oid = (SELECT oid FROM Customers WHERE cid = '" + cid + "')";
 			String cmd2 =  	"SELECT c.iid, c.category, c.warranty, c.manufacturer, c.model, c.price, o.quantity ";
 			cmd2 +=			"FROM OrderItems o, Catalog c ";
-			cmd2 +=			"WHERE o.iid = c.iid AND o.oid = (SELECT oid FROM Customers WHERE cid = '" + cid + "')";
+			cmd2 +=			"WHERE o.iid = c.iid AND o.oid = (SELECT oid FROM Orders WHERE cid = '" + cid + "' AND isCart=1)";
 			System.out.println("\tCart Item Removal - Command = " + cmd1);
 			switch(dest){
 				case Database.DEST_CSTMR:
@@ -304,8 +306,8 @@ public class eMart implements Runnable{
 			ResultSet rs = Database.stmt.executeQuery(cmd);
 			rs.next(); String oid = rs.getString(1);
 			// Ask eStore to check item quantities
-			//eStore.Ref().inputCommand(new eStore.FullfillOrder(dest, cid, oid));
-			ref.inputCommand(new eMart.AddOrder(dest, cid, oid));
+			eStore.Ref().inputCommand(new eStore.FullfillOrder(dest, cid, oid));
+			//ref.inputCommand(new eMart.AddOrder(dest, cid, oid));
 		}
 	}
 	/**
@@ -335,17 +337,17 @@ public class eMart implements Runnable{
 			String cmd = 	"SELECT oid_seq.nextval as newID FROM Dual ";
 			ResultSet rs = Database.stmt.executeQuery(cmd);
 			rs.next(); int newoid = rs.getInt(1);
-			cmd =			"INSERT INTO Orders ";
-			cmd+=			"VALUES((SELECT oid FROM Orders WHERE oid='"+newoid+"'), 0, 0, "
+			cmd =			"INSERT INTO Orders "
+					+ "VALUES((SELECT oid FROM Orders WHERE oid='"+newoid+"'), 0, 0, "
 					+ "(SELECT cid FROM Customers WHERE cid='"+cid+"'), SYSDATE) ";
 			Database.stmt.executeQuery(cmd);
 			newoid+=1;
 			// Copy all items in source order into dest order
-			cmd =	"INSERT INTO OrderItems ";
-			cmd=	"SELECT o.oid, i.iid, c.price, i.quantity ";
-			cmd+=	"FROM Orders o, OrderItems i, Catalog c ";
-			cmd+=	"WHERE o.oid = "+newoid+" AND i.oid = "+oid+" AND c.iid=i.iid";
+			cmd =	"INSERT INTO OrderItems SELECT o.oid, i.iid, c.price, i.quantity "
+					+ "FROM Orders o, OrderItems i, Catalog c WHERE o.oid = "+newoid+" AND i.oid = "+oid+" AND c.iid=i.iid";
 			rs = Database.stmt.executeQuery(cmd);
+			System.out.println(cmd);
+			//while(rs.next()) {System.out.println(rs.getString(1)+" "+rs.getString(2)+" "+rs.getString(3)+" "+rs.getString(4));}
 			// Update order total
 			cmd = 	"SELECT SUM(i.price) FROM OrderItems i WHERE i.oid="+newoid+" GROUP BY i.iid";
 			rs = Database.stmt.executeQuery(cmd);
@@ -359,7 +361,9 @@ public class eMart implements Runnable{
 				disc=rs.getFloat(1); 
 				ship=rs.getFloat(2);
 				if(total>100f) ship = 0.0f;
+				System.out.println(total);
 				total = total - disc*total + ship*total;
+				System.out.println(total);
 			} else total = 0;
 			cmd =	"UPDATE Orders ";
 			cmd+=	"SET total = "+total+" ";
@@ -370,29 +374,33 @@ public class eMart implements Runnable{
 			cmd+=	"WHERE oid = (SELECT oid FROM Orders WHERE cid='"+cid+"' AND oid="+oid+" AND isCart=1)";
 			Database.stmt.executeQuery(cmd);
 			// Update order history, customer status
-			cmd =	"UPDATE PurHistory p SET ";
-			cmd+=	"p.oid1 = (SELECT oid FROM (SELECT * FROM Orders ORDER BY dop) o WHERE ROWNUM = 1 AND o.cid='"+cid+"'), ";
-			cmd+=	"p.oid2 = (SELECT oid FROM (SELECT * FROM Orders ORDER BY dop) o WHERE ROWNUM = 2 AND o.cid='"+cid+"'), ";
-			cmd+=	"p.oid3 = (SELECT oid FROM (SELECT * FROM Orders ORDER BY dop) o WHERE ROWNUM = 3 AND o.cid='"+cid+"') ";
-			cmd+=	"WHERE p.cid = (SELECT cid FROM Customers WHERE cid = '"+cid+"')";
+			cmd =	"UPDATE PurHistory p SET "
+					+ "p.oid1 = (SELECT oid FROM (SELECT * FROM Orders ORDER BY dop DESC) o WHERE ROWNUM = 1 AND o.cid='"+cid+"'), "
+					+ "p.oid2 = (SELECT oid FROM (SELECT * FROM Orders ORDER BY dop DESC) o WHERE ROWNUM = 2 AND o.cid='"+cid+"'), "
+					+ "p.oid3 = (SELECT oid FROM (SELECT * FROM Orders ORDER BY dop DESC) o WHERE ROWNUM = 3 AND o.cid='"+cid+"') "
+					+ "WHERE p.cid = (SELECT cid FROM Customers WHERE cid = '"+cid+"')";
 			Database.stmt.executeQuery(cmd);
-			cmd =	"SELECT SUM(o.total) ";
-			cmd+=	"FROM Orders o, PurHistory p ";
-			cmd+=	"WHERE o.oid=p.oid1 OR o.oid=p.oid2 OR o.oid=p.oid3 ";
-			cmd+=	"GROUP BY o.oid ";
+			cmd =	"SELECT SUM(o.total), (SELECT COUNT(oid) FROM (SELECT * FROM Orders ORDER BY dop DESC) o WHERE ROWNUM <=3) "
+					+ "FROM Orders o, PurHistory p WHERE o.oid=p.oid1 OR o.oid=p.oid2 OR o.oid=p.oid3 GROUP BY o.oid ";
 			rs = Database.stmt.executeQuery(cmd);
+			System.out.println(cmd);
+			int count;
 			if(rs.next()) { 
 				total = rs.getFloat(1);
+				count = rs.getInt(2);
 				String newStatus = "Green";
 				if(total>500f) newStatus = "Gold";
 				else if(total>100f) newStatus = "Silver";
+				else if(count<3) newStatus = "New";
+				System.out.println(newStatus);
 				cmd =	"UPDATE Customers ";
-				cmd+=	"status = (SELECT s.status FROM Status s WHERE s.status="+newStatus+")";
+				cmd+=	"SET status = (SELECT s.status FROM Status s WHERE s.status='"+newStatus+"')";
 				cmd+=	"WHERE cid='"+cid+"'";
 				Database.stmt.executeQuery(cmd);
 			}
 			// Pass updates to CustGUI
 			ref.inputCommand(new eMart.QueryCartItems(Database.DEST_CSTMR, cid));
+			ref.inputCommand(new eMart.QueryCustStats(Database.DEST_CSTMR, cid));
 			ref.inputCommand(new eMart.QueryCustOrders(Database.DEST_EMART, cid));
 		}
 	}
@@ -414,6 +422,7 @@ public class eMart implements Runnable{
 			switch(dest) {
 				case Database.DEST_CSTMR:
 					CustGUI.Ref().SetLoginResult(Database.stmt.executeQuery(cmd));
+					break;
 				case Database.DEST_MANAG:
 					MngrGUI.Ref().SetLoginResult(Database.stmt.executeQuery(cmd));
 				default:
@@ -454,13 +463,13 @@ public class eMart implements Runnable{
 			String cmd1 =  	"SELECT o.oid, o.cid, o.total ";
 			cmd1 +=			"FROM Orders o ";
 			cmd1 +=			"WHERE o.isCart=0 ";
-			String cmd2 = 	"SELECT COUNT(o.oid), SUM(o.total) FROM Orders o GROUP BY o.oid";
+			String cmd2 = 	"SELECT COUNT(oid), SUM(total) FROM Orders";
 			System.out.println("\tOrders Query - Command = " + cmd1);
 			// Pass to appropriate function
 			switch(dest) {
 				case Database.DEST_MANAG:
-					MngrGUI.Ref().SetOrdersData(Database.stmt.executeQuery(cmd1));
 					MngrGUI.Ref().SetOrdersResults(Database.stmt.executeQuery(cmd2));
+					MngrGUI.Ref().SetOrdersData(Database.stmt.executeQuery(cmd1));
 				default:
 			}
 		}
@@ -487,8 +496,8 @@ public class eMart implements Runnable{
 			// Pass to appropriate function
 			switch(dest) {
 				case Database.DEST_MANAG:
-					MngrGUI.Ref().SetOrdersData(Database.stmt.executeQuery(cmd1));
 					MngrGUI.Ref().SetOrdersResults(Database.stmt.executeQuery(cmd2));
+					MngrGUI.Ref().SetOrdersData(Database.stmt.executeQuery(cmd1));
 				default:
 			}
 		}
@@ -511,6 +520,7 @@ public class eMart implements Runnable{
 			switch(dest) {
 				case Database.DEST_CSTMR:
 					CustGUI.Ref().SetOrdersOverview(Database.stmt.executeQuery(cmd));
+					break;
 				case Database.DEST_MANAG:
 					MngrGUI.Ref().SetOrdersOverview(Database.stmt.executeQuery(cmd));
 				default:
@@ -528,9 +538,9 @@ public class eMart implements Runnable{
 		public void execute() throws SQLException {
 			// Assemble command string
 			String cmd =  	"DELETE FROM Orders ";
-			cmd +=			"WHERE isCart=0 AND oid = "+oid+" AND oid != ";
+			cmd +=			"WHERE isCart=0 AND oid = "+oid+" AND oid = ";
 			cmd +=			"(SELECT o.oid FROM Orders o, PurHistory p ";
-			cmd +=			"WHERE o.oid=p.oid1 OR o.oid=p.oid2 OR o.oid=p.oid3)";
+			cmd +=			"WHERE o.oid!=p.oid1 AND o.oid!=p.oid2 AND o.oid!=p.oid3)";
 			System.out.println("\tRemove Order - Command = " + cmd);
 			// Pass to appropriate function
 			switch(dest) {
@@ -550,9 +560,9 @@ public class eMart implements Runnable{
 		public void execute() throws SQLException {
 			// Assemble command string
 			String cmd =  	"DELETE FROM Orders ";
-			cmd +=			"WHERE isCart=0 AND oid != ";
+			cmd +=			"WHERE isCart=0 AND oid = ";
 			cmd +=			"(SELECT o.oid FROM Orders o, PurHistory p ";
-			cmd +=			"WHERE o.oid=p.oid1 OR o.oid=p.oid2 OR o.oid=p.oid3)";
+			cmd +=			"WHERE o.oid!=p.oid1 AND o.oid!=p.oid2 AND o.oid!=p.oid3)";
 			System.out.println("\tRemove All Orders - Command = " + cmd);
 			// Pass to appropriate function
 			switch(dest) {
